@@ -300,17 +300,14 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 		error = rtsx_write(sc, RTS524A_PM_CTRL3, D3_DELINK_MODE_EN, 0x00);
 		if (!error)
 		{
-			printf("RTS525A optimize_phy\n");
 			rtsx_write_phy(sc, _PHY_FLD0, _PHY_FLD0_CLK_REQ_20C | _PHY_FLD0_RX_IDLE_EN | 
 					_PHY_FLD0_BIT_ERR_RSTN | _PHY_FLD0_BER_COUNT |
 					_PHY_FLD0_BER_TIMER | _PHY_FLD0_CHECK_EN);
 			rtsx_write_phy(sc, _PHY_ANA03, _PHY_ANA03_TIMER_MAX | _PHY_ANA03_OOBS_DEB_EN |
 					_PHY_CMU_DEBUG_EN);
 			RTSX_READ(sc, RTSX_DUMMY_REG, &version);
-			printf("RTS525A IC Version : 0x%x\n", version);
 			if (version & 0x0F == RTSX_IC_VERSION_A)
 			{
-				printf("RTS525A IC Version A optimize_phy\n");
 				rtsx_write_phy(sc, _PHY_REV0, _PHY_REV0_FILTER_OUT | _PHY_REV0_CDR_BYPASS_PFD |
 					_PHY_REV0_CDR_RX_IDLE_BYPASS);
 			}
@@ -356,32 +353,41 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 		/* rts5209_extra_init_hw */
 		RTSX_WRITE(sc, RTSX_CARD_GPIO, 0x03);
 		RTSX_WRITE(sc, RTSX_CARD_GPIO_DIR, 0x03);
-	} else {
+	} else if (sc->flags & RTSX_F_525A) {
 		/* rts5249_extra_init_hw */
+		/* Rest L1SUB Config */
+		RTSX_CLR(sc, L1SUB_CONFIG3, 0xFF);
+		/* Configure GPIO as output */
+		rtsx_write(sc, RTSX_GPIO_CTL, 0x02, 0x02);
+		/* Reset ASPM state to default value */
+		RTSX_CLR(sc, RTSX_LDO_PWR_SEL, ASPM_FORCE_CTL);
+		/* Switch LDO3318 source from DV33 to 3V3. */
+		RTSX_CLR(sc, RTSX_LDO_PWR_SEL, RTSX_LDO_PWR_SEL_DV33);
+		RTSX_SET(sc, RTSX_LDO_PWR_SEL, RTSX_LDO_PWR_SEL_3V3);
+		/* LED shine disabled, set initial shine cycle period */
+		rtsx_write(sc, RTSX_OLT_LED_CTL, 0x0F, 0x02);
+		/* Configure driving */
+		//rtsx_write(sc, PETXCFG, 0xB0, 0x80);
+		/* rts525a_extra_init_hw */
+		rtsx_write(sc, PCLK_CTL, PCLK_MODE_SEL, PCLK_MODE_SEL);
+		RTSX_READ(sc, RTSX_DUMMY_REG, &version);
+		if (version & 0x0F == RTSX_IC_VERSION_A)
+		{
+			rtsx_write(sc, L1SUB_CONFIG2, L1SUB_AUTO_CFG, L1SUB_AUTO_CFG);
+			rtsx_write(sc, RREF_CFG, RREF_VBGSEL_MASK, RREF_VBGSEL_1V25);
+			rtsx_write(sc, LDO_VIO_CFG, LDO_VIO_TUNE_MASK, LDO_VIO_1V7);
+			rtsx_write(sc, LDO_DV12S_CFG, LDO_D12_TUNE_MASK, LDO_D12_TUNE_DF);
+			rtsx_write(sc, LDO_AV12S_CFG, LDO_AV12S_TUNE_MASK, LDO_AV12S_TUNE_DF);
+			rtsx_write(sc, LDO_VCC_CFG0, LDO_VCC_LMTVTH_MASK, LDO_VCC_LMTVTH_2A);
+			rtsx_write(sc, OOBS_CONFIG, OOBS_AUTOK_DIS | OOBS_VAL_MASK, 0x89);
+		}
+	} else {
 		RTSX_SET(sc, RTSX_GPIO_CTL, RTSX_GPIO_LED_ON);
 		/* Switch LDO3318 source from DV33 to 3V3. */
 		RTSX_CLR(sc, RTSX_LDO_PWR_SEL, RTSX_LDO_PWR_SEL_DV33);
 		RTSX_SET(sc, RTSX_LDO_PWR_SEL, RTSX_LDO_PWR_SEL_3V3);
 		/* Set default OLT blink period. */
 		RTSX_SET(sc, RTSX_OLT_LED_CTL, RTSX_OLT_LED_PERIOD);
-		/* rts525a_extra_init_hw */
-		if (sc->flags & RTSX_F_525A)
-		{
-			printf("RTS525A extra_init_hw\n");
-			rtsx_write(sc, PCLK_CTL, PCLK_MODE_SEL, PCLK_MODE_SEL);
-			RTSX_READ(sc, RTSX_DUMMY_REG, &version);
-			if (version & 0x0F == RTSX_IC_VERSION_A)
-			{
-				printf("RTS525A IC Version A extra_init_hw\n");
-				rtsx_write(sc, L1SUB_CONFIG2, L1SUB_AUTO_CFG, L1SUB_AUTO_CFG);
-				rtsx_write(sc, RREF_CFG, RREF_VBGSEL_MASK, RREF_VBGSEL_1V25);
-				rtsx_write(sc, LDO_VIO_CFG, LDO_VIO_TUNE_MASK, LDO_VIO_1V7);
-				rtsx_write(sc, LDO_DV12S_CFG, LDO_D12_TUNE_MASK, LDO_D12_TUNE_DF);
-				rtsx_write(sc, LDO_AV12S_CFG, LDO_AV12S_TUNE_MASK, LDO_AV12S_TUNE_DF);
-				rtsx_write(sc, LDO_VCC_CFG0, LDO_VCC_LMTVTH_MASK, LDO_VCC_LMTVTH_2A);
-				rtsx_write(sc, OOBS_CONFIG, OOBS_AUTOK_DIS | OOBS_VAL_MASK, 0x89);
-			}
-		}
 	}
 	
 	return (0);

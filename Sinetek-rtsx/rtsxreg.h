@@ -522,4 +522,56 @@
 #define	RTSX_IC_VERSION_C	0x02
 #define	RTSX_IC_VERSION_D	0x03
 
+
+/* maz-1 - rts525A register values from linux driver */
+#define RTS524A_PM_CTRL3	0xFF7E
+#define D3_DELINK_MODE_EN	0x10
+#define _PHY_ANA03			0x03
+#define   _PHY_ANA03_TIMER_MAX		0x2700
+#define   _PHY_ANA03_OOBS_DEB_EN	0x0040
+#define   _PHY_CMU_DEBUG_EN		0x0008
+#define _PHY_REV0			0x19
+#define   _PHY_REV0_FILTER_OUT		0x3800
+#define   _PHY_REV0_CDR_BYPASS_PFD	0x0100
+#define   _PHY_REV0_CDR_RX_IDLE_BYPASS	0x0002
+#define _PHY_FLD0			0x1D
+#define   _PHY_FLD0_CLK_REQ_20C		0x8000
+#define   _PHY_FLD0_RX_IDLE_EN		0x1000
+#define   _PHY_FLD0_BIT_ERR_RSTN	0x0800
+#define   _PHY_FLD0_BER_COUNT		0x01E0
+#define   _PHY_FLD0_BER_TIMER		0x001E
+#define   _PHY_FLD0_CHECK_EN		0x0001
+#define PCLK_MODE_SEL	0x20
+#define PCLK_CTL	0xFE55
+#define LDO_VIO_CFG			0xFF75
+#define   LDO_VIO_SR_MASK		0xC0
+#define   LDO_VIO_SR_DF			0x40
+#define   LDO_VIO_REF_TUNE_MASK		0x30
+#define   LDO_VIO_REF_1V2		0x20
+#define   LDO_VIO_TUNE_MASK		0x07
+#define   LDO_VIO_1V7			0x03
+#define   LDO_VIO_1V8			0x04
+#define LDO_VIO_3V3	0x07
+#define OOBS_CONFIG			0xFF6E
+#define   OOBS_AUTOK_DIS		0x80
+#define OOBS_VAL_MASK	0x1F
+#define LDO_VCC_LMTVTH_MASK	0x30
+#define LDO_AV12S_TUNE_MASK	0x07
+#define LDO_VCC_LMTVTH_2A	0x10
+#define LDO_VCC_CFG0	0xFF72
+#define LDO_AV12S_CFG			0xFF77
+#define   LDO_AV12S_TUNE_MASK		0x07
+#define LDO_AV12S_TUNE_DF	0x04
+#define LDO_DV12S_CFG			0xFF76
+#define   LDO_D12_TUNE_MASK		0x07
+#define LDO_D12_TUNE_DF	0x04
+#define L1SUB_CONFIG2	0xFE8E
+#define L1SUB_AUTO_CFG	0x02
+#define RREF_CFG			0xFF6C
+#define   RREF_VBGSEL_MASK		0x38
+#define RREF_VBGSEL_1V25	0x28
+#define ASPM_FORCE_CTL 0xFE57
+#define L1SUB_CONFIG3	0xFE8F
+#define PETXCFG	0xFE49
+
 #endif
