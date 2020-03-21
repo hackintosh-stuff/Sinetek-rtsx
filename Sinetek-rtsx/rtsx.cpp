@@ -347,6 +347,8 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 int
 rtsx_activate(struct rtsx_softc *self, int act)
 {
+    return 0; // disable for now (not working...)
+#if 0
     struct rtsx_softc *sc = (struct rtsx_softc *)self;
     int ret = 0;
     
@@ -371,6 +373,7 @@ rtsx_activate(struct rtsx_softc *self, int act)
             break;
     }
     return ret;
+#endif
 }
 
 int
