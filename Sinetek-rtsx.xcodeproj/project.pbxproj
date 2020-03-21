@@ -65,6 +65,7 @@
 		9E9EED9E1E4C65AD00E640DB = {
 			isa = PBXGroup;
 			children = (
+				9355866F242211D600B8B0B9 /* README.md */,
 				9E9EEDAA1E4C65AD00E640DB /* Sinetek-rtsx */,
 				9E9EEDA91E4C65AD00E640DB /* Products */,
 			);
@@ -101,7 +102,6 @@
 				9E9EEDAF1E4C65AD00E640DB /* Info.plist */,
 				E811EB2A202D93B900049454 /* device.h */,
 				935884C92421D21500E781A7 /* util.h */,
-				9355866F242211D600B8B0B9 /* README.md */,
 			);
 			path = "Sinetek-rtsx";
 			sourceTree = "<group>";
