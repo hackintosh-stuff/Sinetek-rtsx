@@ -12,6 +12,9 @@ OSDefineMetaClassAndStructors(rtsx_softc, super);
 #include "rtsxvar.h"
 #include "SDDisk.hpp"
 
+#define UTL_THIS_CLASS "rtsx_softc::"
+#include "util.h"
+
 //
 // syscl - define & enumerate power states
 //
@@ -54,6 +57,12 @@ bool rtsx_softc::start(IOService *provider)
 	prepare_task_loop();
 	rtsx_pci_attach();
 	
+	UTL_LOG("Driver started (%s version)",
+#if DEBUG
+		  "debug");
+#else
+		  "release");
+#endif
 	return true;
 }
 
@@ -63,6 +72,7 @@ void rtsx_softc::stop(IOService *provider)
 	destroy_task_loop();
 	
 	super::stop(provider);
+	UTL_LOG("Driver stopped.");
 }
 
 static void trampoline_intr(OSObject *ih, IOInterruptEventSource *, int count)
@@ -202,6 +212,13 @@ void rtsx_softc::task_execute_one_impl_(OSObject *target, IOTimerEventSource *se
 	     task = TAILQ_FIRST(&sc->sc_tskq)) {
 		sdmmc_del_task(task);
 		task->func(task->arg);
+#if RTSX_FIX_TASK_BUG
+        if (task->func == read_task_impl_) {
+            // free only read_task
+            UTL_DEBUG(0, "Freeing read task...");
+            UTL_FREE(task, sizeof(sdmmc_task));
+        }
+#endif
 	}
 }
 

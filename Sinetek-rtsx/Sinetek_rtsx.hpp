@@ -40,7 +40,10 @@ public:
 	IOInterruptEventSource *intr_source_;
 	
 	SDDisk *			sddisk_;
+#if !RTSX_FIX_TASK_BUG
+    // This is not needed, since we will dynamically allocate read tasks
 	struct sdmmc_task	read_task_;
+#endif
 	
 	/*
 	 * rtsx_softc variables.

@@ -7,6 +7,10 @@
 #include "sdmmcvar.h"
 #include "device.h"
 
+#define UTL_THIS_CLASS "SDDisk::"
+#include "util.h"
+#define printf(...) do {} while (0) /* disable exessive logging */
+
 // Define the superclass
 #define super IOBlockStorageDevice
 OSDefineMetaClassAndStructors(SDDisk, IOBlockStorageDevice)
@@ -317,8 +321,16 @@ IOReturn SDDisk::doAsyncReadWrite(IOMemoryDescriptor *buffer,
 		bioargs->completion = *completion;
 	bioargs->that = this;
 	
+#if RTSX_FIX_TASK_BUG
+    UTL_DEBUG(0, "Allocating read task...");
+    auto newTask = UTL_MALLOC(sdmmc_task); // will be deleted after processed
+    if (!newTask) return kIOReturnNoMemory;
+    sdmmc_init_task(newTask, read_task_impl_, bioargs);
+    sdmmc_add_task(provider_, newTask);
+#else
 	sdmmc_init_task(&provider_->read_task_, read_task_impl_, bioargs);
 	sdmmc_add_task(provider_, &provider_->read_task_);
+#endif
 	
 	IOLockUnlock(util_lock_);
 	// printf("=====================================================\n");

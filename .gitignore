@@ -27,3 +27,8 @@
 *.exe
 *.out
 *.app
+
+# Xcode-related files
+*.xcuserstate
+*.xcodeproj/project.xcworkspace
+*.xcodeproj/xcuserdata
