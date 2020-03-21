@@ -32,3 +32,4 @@
 *.xcuserstate
 *.xcodeproj/project.xcworkspace
 *.xcodeproj/xcuserdata
+build
