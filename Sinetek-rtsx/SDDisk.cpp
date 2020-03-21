@@ -21,7 +21,7 @@ bool SDDisk::init(struct sdmmc_softc *sc_sdmmc, OSDictionary* properties)
 	if (super::init(properties) == false)
 		return false;
 	
-	util_lock_ = IOLockAlloc();
+	util_lock_ = nullptr;
 	
 	UTL_DEBUG(0, "END");
 	return true;
@@ -41,7 +41,8 @@ bool SDDisk::attach(IOService* provider)
 	
 	num_blocks_ = provider_->sc_fn0->csd.capacity;
 	blk_size_   = provider_->sc_fn0->csd.sector_size;
-	
+	util_lock_ = IOLockAlloc();
+
 	printf("rtsx: attaching SDDisk, num_blocks:%d  blk_size:%d\n",
 	       num_blocks_, blk_size_);
 	
@@ -52,6 +53,8 @@ bool SDDisk::attach(IOService* provider)
 void SDDisk::detach(IOService* provider)
 {
     UTL_LOG("SDDisk detaching...");
+	IOLockFree(util_lock_);
+	util_lock_ = NULL;
 	provider_->release();
 	provider_ = NULL;
 	
