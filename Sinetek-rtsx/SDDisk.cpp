@@ -274,6 +274,9 @@ void read_task_impl_(void *_args)
 	
 	
 	actualByteCount = args->nblks * args->that->blk_size_;
+#if RTSX_USE_WRITEBYTES
+	u_char buf[512];
+#else
 	auto map = args->buffer->map();
 	u_char * buf = (u_char *) map->getVirtualAddress();
 	
@@ -285,15 +288,28 @@ void read_task_impl_(void *_args)
 					  0, buf, 512);
 		sdmmc_go_idle_state(args->that->provider_);
 	}
-	
-	for (UInt64 b = 0; b < args->nblks; ++b)
+#endif
+		
+	for (UInt64 b = 0; b < args->nblks; b++)
 	{
 		printf("would: %lld  last block %d\n", args->block + b, args->that->num_blocks_ - 1);
 		//unsigned int would = args->block + b;
+#if RTSX_USE_WRITEBYTES
+		// This is a safer version
+		error = sdmmc_mem_read_block_subr(args->that->provider_->sc_fn0,
+						  static_cast<int>(args->block + b),
+						  buf, 512);
+		if (!error) {
+			args->buffer->writeBytes(b * 512, buf, 512);
+		} else {
+			UTL_ERR("ERROR READING BLOCK (blockNo=%d error=%d)", static_cast<int>(args->block + b), error);
+		}
+#else
         auto would = args->block + b;
 		//if ( would > 60751872 ) would = 60751871;
 		error = sdmmc_mem_read_block_subr(args->that->provider_->sc_fn0,
 				static_cast<int>(would), buf + b * 512, 512);
+#endif
 		if (error) {
 			if (args->completion.action) {
 				(args->completion.action)(args->completion.target, args->completion.parameter,
@@ -351,6 +367,9 @@ IOReturn SDDisk::doAsyncReadWrite(IOMemoryDescriptor *buffer,
 	direction = buffer->getDirection();
 	if ((direction != kIODirectionIn) && (direction != kIODirectionOut))
 		return kIOReturnBadArgument;
+	
+	if (direction == kIODirectionOut)
+		return kIOReturnNotWritable; // read-only driver for now...
 	
 	if ((block + nblks) > num_blocks_)
 		return kIOReturnBadArgument;

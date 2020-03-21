@@ -17,6 +17,7 @@ Used by `#define`/`#if <option>`:
 | Option                   | Requires          | Notes                                                                                                                       |
 |--------------------------|-------------------|-----------------------------------------------------------------------------------------------------------------------------|
 | `RTSX_FIX_TASK_BUG`      |                   | Fix task bug (reusing task pointer instead of allocating it).                                                               |
+| `RTSX_USE_WRITEBYTES`    |                   | Use `IOMemoryDescriptor::writeBytes()` method to write buffer instead of the original `buffer->map()->getVirtualAddress()`. |
 
 ## To Do
 
