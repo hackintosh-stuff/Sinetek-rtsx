@@ -70,6 +70,11 @@ void rtsx_softc::stop(IOService *provider)
 {
 	rtsx_pci_detach();
 	destroy_task_loop();
+	if (workloop_) {
+		workloop_->release();
+		workloop_ = NULL;
+	}
+	PMstop();
 	
 	super::stop(provider);
 	UTL_LOG("Driver stopped.");
@@ -205,13 +210,19 @@ extern auto sdmmc_del_task(struct sdmmc_task *task)		-> void;
 
 void rtsx_softc::task_execute_one_impl_(OSObject *target, IOTimerEventSource *sender)
 {
+    extern void read_task_impl_(void *_args);
+	UTL_DEBUG(1, "  ===> TOOK TASK WORKLOOP...");
+	if (!target) return;
 	rtsx_softc *sc = (rtsx_softc *)target;
 	struct sdmmc_task *task;
 	
 	for (task = TAILQ_FIRST(&sc->sc_tskq); task != NULL;
 	     task = TAILQ_FIRST(&sc->sc_tskq)) {
+		UTL_DEBUG(1, "  => Executing one task (CRASHED HERE!)...");
 		sdmmc_del_task(task);
+		UTL_DEBUG(1, "  => Task deleted from queue");
 		task->func(task->arg);
+		UTL_DEBUG(1, "  => Executed one task!");
 #if RTSX_FIX_TASK_BUG
         if (task->func == read_task_impl_) {
             // free only read_task
@@ -220,6 +231,7 @@ void rtsx_softc::task_execute_one_impl_(OSObject *target, IOTimerEventSource *se
         }
 #endif
 	}
+	UTL_DEBUG(1, "  <=== RELEASING TASK WORKLOOP...");
 }
 
 /**
@@ -234,13 +246,17 @@ void rtsx_softc::blk_attach()
 	sddisk_ = new SDDisk();
 	sddisk_->init(this);
 	sddisk_->attach(this);
-	sddisk_->release();
+	//sddisk_->release();
 	sddisk_->registerService();
 }
 
 void rtsx_softc::blk_detach()
 {
-	printf("rtsx: blk_detach()\n");
+	UTL_DEBUG(0, "START");
 
-	sddisk_->terminate();
+	if (!sddisk_->terminate()) {
+		UTL_DEBUG(0, "sddisk->terminate() returns false!");
+	}
+	UTL_DEBUG(0, "END");
+}
 }
