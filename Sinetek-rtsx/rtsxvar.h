@@ -38,6 +38,9 @@ int	rtsx_attach(struct rtsx_softc *);
 /* syscl - enable Power Management function */
 int rtsx_activate(struct rtsx_softc *self, int act);
 int	rtsx_intr(void *);
+#if RTSX_USE_IOFIES
+bool is_my_interrupt(OSObject *arg, IOFilterInterruptEventSource *source);
+#endif
 
 /* flag values */
 #define	RTSX_F_CARD_PRESENT 0x01

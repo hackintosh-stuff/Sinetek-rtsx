@@ -1333,7 +1333,23 @@ rtsx_wait_intr(struct rtsx_softc *sc, int mask, int timo)
 	status = splsdmmc();
 	status = sc->intr_status & mask;
 	while (status == 0) {
-#if RTSX_USE_IOLOCK
+#if RTSX_USE_IOCOMMANDGATE // cholonam: since the interrupt belongs to a different workloop, it makes no sense to call
+// commandSleep here!
+// since this is called from a commandGate, we can sleep the command
+// see: https://github.com/alexandred/VoodooI2C/blob/master/VoodooI2C/VoodooI2C/VoodooI2CController/VoodooI2CControllerDriver.cpp#L176
+auto sleep = sc->task_command_gate_->commandSleep(&sc->intr_status_event,
+    timo2AbsoluteTimeDeadline(10 * timo), THREAD_UNINT);
+if (sleep == THREAD_TIMED_OUT) {
+    UTL_ERR("THREAD_TIMED_OUT! (inGate=%s)", sc->workloop_->inGate() ? "true" : "false");
+    error = ETIMEDOUT;
+    break;
+} else if (sleep == kIOReturnNotPermitted) {
+    UTL_DEBUG(0, "The calling thread does not hold the gate!");
+    error = EIO;
+    break;
+}
+status = sc->intr_status & mask;
+#elif RTSX_USE_IOLOCK
 		IOLockLock(sc->intr_status_lock);
 		if (sc->intr_status_event) {
 			UTL_DEBUG(2, "Interrupt was already here!");
@@ -1492,7 +1508,11 @@ rtsx_intr(void *arg)
 	}
 	
 	if (status & (RTSX_TRANS_OK_INT | RTSX_TRANS_FAIL_INT)) {
-#if RTSX_USE_IOLOCK
+#if RTSX_USE_IOCOMMANDGATE
+        sc->intr_status_event = true;
+        sc->intr_status |= status;
+        sc->task_command_gate_->commandWakeup(&sc->intr_status_event);
+#elif RTSX_USE_IOLOCK
 		IOLockLock(sc->intr_status_lock);
 		UTL_DEBUG(2, "Thread 0x%016llx waking waiting thread (intr_status_event: %s => true)...",
 			reinterpret_cast<int64_t>(IOThreadSelf()),
@@ -1509,3 +1529,22 @@ rtsx_intr(void *arg)
 	
 	return 1;
 }
+
+#if RTSX_USE_IOFIES
+/// This function runs in interrupt context, meaning that IOLog CANNOT be used (only basic functionality is available).
+bool is_my_interrupt(OSObject *arg, IOFilterInterruptEventSource *source) {
+	if (!arg) return false;
+
+	rtsx_softc *sc = (rtsx_softc*) arg;
+
+	auto status = READ4(sc, RTSX_BIPR);
+	if (!status) {
+		return false;
+	}
+
+	auto bier = READ4(sc, RTSX_BIER);
+	if ((status & bier) == 0) return false;
+
+	return true;
+}
+#endif // RTSX_USE_IOFIES

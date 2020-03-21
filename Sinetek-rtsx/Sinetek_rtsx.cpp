@@ -3,6 +3,9 @@
 #include <IOKit/IOLib.h>
 #include <IOKit/pci/IOPCIDevice.h>
 #include <IOKit/IOTimerEventSource.h>
+#if RTSX_USE_IOFIES
+#include <IOKit/IOFilterInterruptEventSource.h>
+#endif
 
 #undef super
 #define super IOService
@@ -123,7 +126,11 @@ void rtsx_softc::rtsx_pci_attach()
     memory_descriptor_ = map_->getMemoryDescriptor();
     
     /* Map device interrupt. */
+#if RTSX_USE_IOFIES
+    intr_source_ = IOFilterInterruptEventSource::filterInterruptEventSource(this, trampoline_intr, is_my_interrupt, provider_);
+#else // RTSX_USE_IOFIES
     intr_source_ = IOInterruptEventSource::interruptEventSource(this, trampoline_intr, provider_);
+#endif // RTSX_USE_IOFIES
     if (!intr_source_)
     {
         printf("can't map interrupt source\n");
@@ -202,16 +209,35 @@ done:
 
 void rtsx_softc::prepare_task_loop()
 {
+#if RTSX_USE_IOCOMMANDGATE
+	task_command_gate_ = IOCommandGate::commandGate(this, rtsx_softc::executeOneCommandGateAction);
+	workloop_->addEventSource(task_command_gate_);
+#endif
+#if RTSX_USE_IOCOMMANDGATE
+	// connect the timer to the interrupt workloop_
+	task_execute_one_ = IOTimerEventSource::timerEventSource(this, task_execute_one_impl_);
+	workloop_->addEventSource(task_execute_one_);
+#else
 	task_loop_ = IOWorkLoop::workLoop();
 	task_execute_one_ = IOTimerEventSource::timerEventSource(this, task_execute_one_impl_);
 	task_loop_->addEventSource(task_execute_one_);
+#endif
 }
 
 void rtsx_softc::destroy_task_loop()
 {
 	task_execute_one_->cancelTimeout();
+#if RTSX_USE_IOCOMMANDGATE
+    workloop_->removeEventSource(task_command_gate_);
+    task_command_gate_->release();
+    task_command_gate_ = NULL;
+    workloop_->removeEventSource(task_execute_one_);
+    task_execute_one_->release();
+#else
 	task_loop_->removeEventSource(task_execute_one_);
+    task_execute_one_->release();
 	task_loop_->release();
+#endif
 }
 
 /*
@@ -277,4 +303,24 @@ void rtsx_softc::blk_detach()
 	}
 	UTL_DEBUG(0, "END");
 }
+
+#if RTSX_USE_IOCOMMANDGATE
+void rtsx_softc::executeOneAsCommand() {
+	UTL_DEBUG(0, "Calling runAction()...");
+	task_command_gate_->runCommand(nullptr);
+	task_command_gate_->runAction(
+		(IOCommandGate::Action) executeOneCommandGateAction);
+	UTL_DEBUG(0, "runAction() returns");
 }
+
+IOReturn rtsx_softc::executeOneCommandGateAction(
+	OSObject *obj,
+	void *,
+	void *, void *, void * )
+{
+	UTL_DEBUG(0, "EXECUTE ONE COMMANDGATEACTION CALLED!");
+	rtsx_softc::task_execute_one_impl_(obj, nullptr /* unused */);
+	return kIOReturnSuccess;
+	UTL_DEBUG(0, "EXECUTE ONE COMMANDGATEACTION RETURNING");
+}
+#endif // RTSX_USE_IOCOMMANDGATE

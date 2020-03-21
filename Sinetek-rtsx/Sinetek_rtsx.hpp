@@ -4,6 +4,12 @@
 
 #include <IOKit/pci/IOPCIDevice.h>
 #include <IOKit/IOInterruptEventSource.h>
+#if RTSX_USE_IOCOMMANDGATE
+#include <IOKit/IOCommandGate.h>
+#endif
+#if RTSX_USE_IOFIES
+#include <IOKit/IOFilterInterruptEventSource.h>
+#endif
 #include <IOKit/IOBufferMemoryDescriptor.h>
 
 #include "sdmmcvar.h"
@@ -37,7 +43,18 @@ public:
 	IOWorkLoop *		workloop_;
 	IOMemoryMap *		map_;
 	IOMemoryDescriptor *	memory_descriptor_;
+#if RTSX_USE_IOFIES
+	IOFilterInterruptEventSource *intr_source_;
+#if RTSX_USE_IOCOMMANDGATE
+	void executeOneAsCommand();
+	static int executeOneCommandGateAction(
+		OSObject *sc,
+		void *newRequest,
+		void *, void *, void * );
+#endif
+#else // RTSX_USE_IOFIES
 	IOInterruptEventSource *intr_source_;
+#endif // RTSX_USE_IOFIES
 	
 	SDDisk *			sddisk_;
 #if !RTSX_FIX_TASK_BUG
@@ -60,10 +77,14 @@ public:
 	IOBufferMemoryDescriptor * dmap_cmd, *dmap_data;
 	
 	
+#if RTSX_USE_IOCOMMANDGATE
+	IOCommandGate *		task_command_gate_;
+#else
 	/*
 	 * Task thread.
 	 */
 	IOWorkLoop *		task_loop_;
+#endif
 	IOTimerEventSource *	task_execute_one_;
 	void			task_add();
 	void			prepare_task_loop();

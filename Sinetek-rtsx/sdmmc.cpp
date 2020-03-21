@@ -218,7 +218,9 @@ sdmmc_add_task(struct sdmmc_softc *sc, struct sdmmc_task *task)
 	TAILQ_INSERT_TAIL(&sc->sc_tskq, task, next);
 	task->onqueue = 1;
 	task->sc = sc;
-#if RTSX_USE_IOLOCK
+#if RTSX_USE_IOCOMMANDGATE
+    sc->executeOneAsCommand(); // this will run in the task work loop, but we need to exit the workloop_ first!
+#elif RTSX_USE_IOLOCK
 	
 #else
 	wakeup(&sc->sc_tskq);
