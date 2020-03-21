@@ -426,8 +426,8 @@ sdmmc_mem_send_cxd_data(struct sdmmc_softc *sc, int opcode, void *data,
 	
 	memset(&cmd, 0, sizeof(cmd));
 	cmd.c_data = ptr;
-	cmd.c_datalen = datalen;
-	cmd.c_blklen = datalen;
+	cmd.c_datalen = static_cast<int>(datalen);
+	cmd.c_blklen = static_cast<int>(datalen);
 	cmd.c_opcode = opcode;
 	cmd.c_arg = 0;
 	cmd.c_flags = SCF_CMD_ADTC | SCF_CMD_READ;
@@ -582,7 +582,7 @@ sdmmc_be512_to_bitfield512(sdmmc_bitfield512_t *buf) {
 int
 sdmmc_mem_sd_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 {
-	int support_func, best_func, error;
+	int support_func = 0, best_func, error;
 	sdmmc_bitfield512_t status; /* Switch Function Status */
 	uint32_t raw_scr[2];
 	
@@ -819,7 +819,7 @@ sdmmc_mem_send_op_cond(struct sdmmc_softc *sc, u_int32_t ocr,
 		       u_int32_t *ocrp)
 {
 	struct sdmmc_command cmd;
-	int error;
+	int error = 0;
 	int i;
 	
 	/*
@@ -888,7 +888,7 @@ sdmmc_mem_read_block_subr(struct sdmmc_function *sf,
 	
 	bzero(&cmd, sizeof cmd);
 	cmd.c_data = data;
-	cmd.c_datalen = datalen;
+	cmd.c_datalen = static_cast<int>(datalen);
 	cmd.c_blklen = sf->csd.sector_size;
 	cmd.c_opcode = (datalen / cmd.c_blklen) > 1 ?
 	MMC_READ_BLOCK_MULTIPLE : MMC_READ_BLOCK_SINGLE;
@@ -985,7 +985,7 @@ sdmmc_mem_write_block_subr(struct sdmmc_function *sf, void* dmap,
 	
 	bzero(&cmd, sizeof cmd);
 	cmd.c_data = data;
-	cmd.c_datalen = datalen;
+	cmd.c_datalen = static_cast<int>(datalen);
 	cmd.c_blklen = sf->csd.sector_size;
 	cmd.c_opcode = (datalen / cmd.c_blklen) > 1 ?
 	MMC_WRITE_BLOCK_MULTIPLE : MMC_WRITE_BLOCK_SINGLE;
