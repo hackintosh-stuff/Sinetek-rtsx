@@ -852,6 +852,12 @@ sdmmc_mem_send_op_cond(struct sdmmc_softc *sc, u_int32_t ocr,
 	if (error == 0 && ocrp != NULL)
 		*ocrp = MMC_R3(cmd.c_resp);
 	
+#if DEBUG
+	if (error == ETIMEDOUT) {
+		printf("rtsx: sdmmc_mem_send_op_cmd timed out! (ocr=%d, i = %d)\n", ocr, i);
+	}
+#endif
+
 	return error;
 }
 
