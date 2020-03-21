@@ -465,7 +465,7 @@ int
 sdmmc_io_send_op_cond(struct sdmmc_softc *sc, u_int32_t ocr, u_int32_t *ocrp)
 {
 	struct sdmmc_command cmd;
-	int error;
+	int error = 0;
 	int i;
 	
 	/*
@@ -490,6 +490,12 @@ sdmmc_io_send_op_cond(struct sdmmc_softc *sc, u_int32_t ocr, u_int32_t *ocrp)
 	}
 	if (error == 0 && ocrp != NULL)
 		*ocrp = MMC_R4(cmd.c_resp);
+	
+#if DEBUG
+	if (error == ETIMEDOUT) {
+		printf("rtsx: sdmmc_io_send_op_cmd timed out! (ocr=%d, i = %d)\n", ocr, i);
+	}
+#endif
 	
 	return error;
 }

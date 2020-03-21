@@ -17,16 +17,19 @@ OSDefineMetaClassAndStructors(SDDisk, IOBlockStorageDevice)
 
 bool SDDisk::init(struct sdmmc_softc *sc_sdmmc, OSDictionary* properties)
 {
+	UTL_DEBUG(0, "START");
 	if (super::init(properties) == false)
 		return false;
 	
 	util_lock_ = IOLockAlloc();
 	
+	UTL_DEBUG(0, "END");
 	return true;
 }
 
 bool SDDisk::attach(IOService* provider)
 {
+	UTL_LOG("SDDisk attaching...");
 	if (super::attach(provider) == false)
 		return false;
 	
@@ -42,39 +45,47 @@ bool SDDisk::attach(IOService* provider)
 	printf("rtsx: attaching SDDisk, num_blocks:%d  blk_size:%d\n",
 	       num_blocks_, blk_size_);
 	
+    UTL_LOG("SDDisk attached.");
 	return true;
 }
 
 void SDDisk::detach(IOService* provider)
 {
+    UTL_LOG("SDDisk detaching...");
 	provider_->release();
 	provider_ = NULL;
 	
 	super::detach(provider);
+    UTL_LOG("SDDisk detached.");
 }
 
 IOReturn SDDisk::doEjectMedia(void)
 {
+	UTL_DEBUG(0, "START");
     IOLog("%s: RAMDISK: doEjectMedia.", __func__);
 	
 	// XXX signal intent further down the stack?
     // syscl - implement eject routine here
     rtsx_card_eject(provider_);
+	UTL_DEBUG(0, "END");
 	return kIOReturnSuccess;
 }
 
 IOReturn SDDisk::doFormatMedia(UInt64 byteCapacity)
 {
+	UTL_DEBUG(0, "START");
 	return kIOReturnSuccess;
 }
 
 UInt32 SDDisk::GetBlockCount() const
 {
+    UTL_DEBUG(0, "START");
     return num_blocks_;
 }
 
 UInt32 SDDisk::doGetFormatCapacities(UInt64* capacities, UInt32 capacitiesMaxCount) const
 {
+	UTL_DEBUG(0, "START");
 	// Ensure that the array is sufficient to hold all our formats (we require 1 element).
 	if ((capacities != NULL) && (capacitiesMaxCount < 1))
 		return 0;               // Error, return an array size of 0.
@@ -93,16 +104,19 @@ UInt32 SDDisk::doGetFormatCapacities(UInt64* capacities, UInt32 capacitiesMaxCou
 
 IOReturn SDDisk::doLockUnlockMedia(bool doLock)
 {
+	UTL_DEBUG(0, "START");
 	return kIOReturnUnsupported;
 }
 
 IOReturn SDDisk::doSynchronizeCache(void)
 {
+	UTL_DEBUG(0, "START");
 	return kIOReturnSuccess;
 }
 
 char* SDDisk::getVendorString(void)
 {
+    UTL_DEBUG(0, "START");
     // syscl - safely converted to char * use const_static due
     // to ISO C++11 does not allow conversion from string literal to 'char *'
     return const_cast<char *>("Realtek");
@@ -110,6 +124,7 @@ char* SDDisk::getVendorString(void)
 
 char* SDDisk::getProductString(void)
 {
+    UTL_DEBUG(0, "START");
     // syscl - safely converted to char * use const_static due
     // to ISO C++11 does not allow conversion from string literal to 'char *'
     return const_cast<char *>("SD Card Reader");
@@ -117,6 +132,7 @@ char* SDDisk::getProductString(void)
 
 char* SDDisk::getRevisionString(void)
 {
+    UTL_DEBUG(0, "START");
     // syscl - safely converted to char * use const_static due
     // to ISO C++11 does not allow conversion from string literal to 'char *'
     return const_cast<char *>("1.0");
@@ -124,6 +140,7 @@ char* SDDisk::getRevisionString(void)
 
 char* SDDisk::getAdditionalDeviceInfoString(void)
 {
+    UTL_DEBUG(0, "START");
     // syscl - safely converted to char * use const_static due
     // to ISO C++11 does not allow conversion from string literal to 'char *''
     return const_cast<char *>("1.0");
@@ -131,12 +148,17 @@ char* SDDisk::getAdditionalDeviceInfoString(void)
 
 IOReturn SDDisk::reportBlockSize(UInt64 *blockSize)
 {
+	UTL_DEBUG(0, "START");
+	if (blk_size_ != 512) {
+		UTL_DEBUG(0, "Reporting block size != 512 (%u)", blk_size_);
+	}
 	*blockSize = blk_size_;
 	return kIOReturnSuccess;
 }
 
 IOReturn SDDisk::reportEjectability(bool *isEjectable)
 {
+    UTL_DEBUG(0, "START");
     *isEjectable = true; // syscl - should be true
     return kIOReturnSuccess;
 }
@@ -157,6 +179,7 @@ IOReturn SDDisk::reportMaxValidBlock(UInt64 *maxBlock)
 
 IOReturn SDDisk::reportMediaState(bool *mediaPresent, bool *changedState)
 {
+	UTL_DEBUG(0, "START");
 	*mediaPresent = true;
 	*changedState = false;
 	
@@ -165,6 +188,7 @@ IOReturn SDDisk::reportMediaState(bool *mediaPresent, bool *changedState)
 
 IOReturn SDDisk::reportPollRequirements(bool *pollRequired, bool *pollIsExpensive)
 {
+	UTL_DEBUG(0, "START");
 	*pollRequired = false;
 	*pollIsExpensive = false;
 	return kIOReturnSuccess;
@@ -172,23 +196,27 @@ IOReturn SDDisk::reportPollRequirements(bool *pollRequired, bool *pollIsExpensiv
 
 IOReturn SDDisk::reportRemovability(bool *isRemovable)
 {
+	UTL_DEBUG(0, "START");
 	*isRemovable = true;
 	return kIOReturnSuccess;
 }
 
 IOReturn SDDisk::reportWriteProtection(bool *isWriteProtected)
 {
+	UTL_DEBUG(0, "START");
 	*isWriteProtected = true; // XXX
 	return kIOReturnSuccess;
 }
 
 IOReturn SDDisk::getWriteCacheState(bool *enabled)
 {
+	UTL_DEBUG(0, "START");
 	return kIOReturnUnsupported;
 }
 
 IOReturn SDDisk::setWriteCacheState(bool enabled)
 {
+	UTL_DEBUG(0, "START");
 	return kIOReturnUnsupported;
 }
 
@@ -220,14 +248,23 @@ sdmmc_mem_read_block_subr(struct sdmmc_function *sf,
 			  int blkno, u_char *data, size_t datalen);
 
 
-
+// cholonam: This task is put on a queue which is run by sc::task_execute_one_ (originally using a timer, now trying to
+// change to an IOCommandGate.
 void read_task_impl_(void *_args)
 {
 	BioArgs *args = (BioArgs *) _args;
 	IOByteCount actualByteCount;
 	int error = 0;
 	
-	if (!args) return;
+	UTL_CHK_PTR(args,);
+	UTL_CHK_PTR(args->buffer,);
+	UTL_CHK_PTR(args->that,);
+	UTL_CHK_PTR(args->that->provider_,);
+	UTL_CHK_PTR(args->that->provider_->sc_fn0,);
+	UTL_DEBUG(0, "START (block = %u nblks = %u blksize = %u)",
+		  static_cast<unsigned>(args->block),
+		  static_cast<unsigned>(args->nblks),
+		  args->that->blk_size_);
 	
 	printf("read_task_impl_  sz %llu\n", args->nblks * args->that->blk_size_);
 	printf("sf->csd.sector_size %d\n", args->that->provider_->sc_fn0->csd.sector_size);
@@ -255,14 +292,29 @@ void read_task_impl_(void *_args)
 		error = sdmmc_mem_read_block_subr(args->that->provider_->sc_fn0,
 				static_cast<int>(would), buf + b * 512, 512);
 		if (error) {
-			(args->completion.action)(args->completion.target, args->completion.parameter, kIOReturnIOError, 0);
+			if (args->completion.action) {
+				(args->completion.action)(args->completion.target, args->completion.parameter,
+					kIOReturnIOError, 0);
+			} else {
+				UTL_ERR("No completion action!");
+			}
 			goto out;
 		}
 	}
 	
-	(args->completion.action)(args->completion.target, args->completion.parameter, kIOReturnSuccess, actualByteCount);
+	if (args->completion.action) {
+		(args->completion.action)(args->completion.target, args->completion.parameter,
+			kIOReturnSuccess, actualByteCount);
+	} else {
+		UTL_ERR("No completion action!");
+	}
 	
 out:
+    if (error) {
+        UTL_ERR("END (error = %d)", error);
+    } else {
+        UTL_DEBUG(0, "END (error = %d)", error);
+    }
 	delete args;
 }
 
@@ -304,6 +356,7 @@ IOReturn SDDisk::doAsyncReadWrite(IOMemoryDescriptor *buffer,
 		return kIOReturnBadArgument;
 	
 	// printf("=====================================================\n");
+	UTL_DEBUG(0, "START (block=%d nblks=%d)", (int) block, (int) nblks);
 	IOLockLock(util_lock_);
 
 	/*
@@ -335,5 +388,6 @@ IOReturn SDDisk::doAsyncReadWrite(IOMemoryDescriptor *buffer,
 	IOLockUnlock(util_lock_);
 	// printf("=====================================================\n");
 	
+	UTL_DEBUG(0, "RETURNING SUCCESS");
 	return kIOReturnSuccess;
 }

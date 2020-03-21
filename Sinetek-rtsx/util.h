@@ -65,8 +65,8 @@ if (!(ptr)) { \
 } while (0)
 
 #if RTSX_USE_IOLOCK
-#define splsdmmc(...) MHCsplsdmmc(sc->splsdmmc_rec_lock)
-inline int MHCsplsdmmc(IORecursiveLock *l) {
+#define splsdmmc(...) UTLsplsdmmc(sc->splsdmmc_rec_lock)
+inline int UTLsplsdmmc(IORecursiveLock *l) {
 	IORecursiveLockLock(l);
 	UTL_DEBUG(2, "Locked splsdmmc_lock");
 	return 0;

@@ -78,6 +78,10 @@ splx(int)
 {
 }
 
+// must be after the definitions of splsdmmc/splx
+#define UTL_THIS_CLASS ""
+#include "util.h"
+
 /**
  *   'hz' contains tick rate.
  */
@@ -168,7 +172,7 @@ void	rtsx_save_regs(struct rtsx_softc *);
 void	rtsx_restore_regs(struct rtsx_softc *);
 
 #ifdef RTSX_DEBUG
-#define DPRINTF(n,s)	do { printf s; } while (0)
+#define DPRINTF(n,s)	do { if (n < UTL_DEBUG_LEVEL) printf s; } while (0)
 #else
 #define DPRINTF(n,s)	do {} while(0)
 #endif
@@ -275,6 +279,7 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 	
 	/* Clear any pending interrupts. */
 	status = READ4(sc, RTSX_BIPR);
+	UTL_DEBUG(2, "CLEARING PENDING INTERRUPTS.");
 	WRITE4(sc, RTSX_BIPR, status);
 	
 	/* Check for cards already inserted at attach time. */
@@ -282,6 +287,7 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 		sc->flags |= RTSX_F_CARD_PRESENT;
 	
 	/* Enable interrupts. */
+	UTL_DEBUG(2, "rtsx_init ===> Enable interrupts.");
 	WRITE4(sc, RTSX_BIER,
 	       RTSX_TRANS_OK_INT_EN | RTSX_TRANS_FAIL_INT_EN | RTSX_SD_INT_EN);
 	
@@ -709,6 +715,7 @@ rtsx_bus_clock(sdmmc_chipset_handle_t sch, int freq, int timing)
 	/*
 	 * Enable SD clock.
 	 */
+	UTL_DEBUG(0, "Setting bus clock: n = %d, div  = %d, mcu = %d", n, div, mcu);
 	error = rtsx_switch_sd_clock(sc, n, div, mcu);
 ret:
 	splx(s);
@@ -727,7 +734,7 @@ int
 rtsx_read(struct rtsx_softc *sc, u_int16_t addr, u_int8_t *val)
 {
 	int tries = 1024;
-	u_int32_t reg;
+	u_int32_t reg = 0;
 	
 	WRITE4(sc, RTSX_HAIMR, RTSX_HAIMR_BUSY |
 	       (u_int32_t)((addr & 0x3FFF) << 16));
@@ -756,12 +763,16 @@ rtsx_write(struct rtsx_softc *sc, u_int16_t addr, u_int8_t mask, u_int8_t val)
 	while (tries--) {
 		reg = READ4(sc, RTSX_HAIMR);
 		if (!(reg & RTSX_HAIMR_BUSY)) {
-			if (val != (reg & 0xff))
+			if (val != (reg & 0xff)) {
+				UTL_DEBUG(0, "rtsx_write returns EIO! (addr=0x%04x mask=0x%02x val=0x%02x)\n",
+					(int) addr, (int) mask, (int) val);
 				return EIO;
+			}
 			return 0;
 		}
 	}
-	
+	UTL_DEBUG(0, "too many retries! (addr=0x%04x mask=0x%02x val=0x%02x)\n",
+		(int) addr, (int) mask, (int) val);
 	return ETIMEDOUT;
 }
 
@@ -834,8 +845,10 @@ rtsx_read_cfg(struct rtsx_softc *sc, u_int8_t func, u_int16_t addr,
 			break;
 	}
 	
-	if (tries == 0)
+	if (tries == 0) {
+		UTL_DEBUG(0, "Could not read configuration (func = %d, addr = %d)", func, addr);
 		return EIO;
+	}
 	
 	RTSX_READ(sc, RTSX_CFGDATA0, &data0);
 	RTSX_READ(sc, RTSX_CFGDATA1, &data1);
@@ -877,8 +890,10 @@ rtsx_write_cfg(struct rtsx_softc *sc, u_int8_t func, u_int16_t addr,
 			break;
 	}
 	
-	if (tries == 0)
+	if (tries == 0) {
+		UTL_DEBUG(0, "Could not write configuration (func = %d, addr = %d)", func, addr);
 		return EIO;
+	}
 	
 	return 0;
 }
@@ -980,6 +995,7 @@ rtsx_response_type(u_int16_t sdmmc_rsp)
 	return 0;
 }
 
+// In linux: rtsx_pcr.c:rtsx_pci_send_cmd()
 int
 rtsx_hostcmd_send(struct rtsx_softc *sc, int ncmd)
 {
@@ -988,7 +1004,7 @@ rtsx_hostcmd_send(struct rtsx_softc *sc, int ncmd)
 	s = splsdmmc();
 	
 	/* Tell the chip where the command buffer is and run the commands. */
-	WRITE4(sc, RTSX_HCBAR, sc->dmap_cmd->getPhysicalAddress());
+	WRITE4(sc, RTSX_HCBAR, (uint32_t) sc->dmap_cmd->getPhysicalAddress());
 	WRITE4(sc, RTSX_HCBCTLR,
 	       ((ncmd * 4) & 0x00ffffff) | RTSX_START_CMD | RTSX_HW_AUTO_RSP);
 	
@@ -1110,7 +1126,7 @@ rtsx_xfer(struct rtsx_softc *sc, struct sdmmc_command *cmd, u_int32_t *cmdbuf)
 	s = splsdmmc();
 	
 	/* Tell the chip where the data buffer is and run the transfer. */
-	WRITE4(sc, RTSX_HDBAR, physAddr);
+	WRITE4(sc, RTSX_HDBAR, (uint32_t) physAddr);
 	WRITE4(sc, RTSX_HDBCTLR, RTSX_TRIG_DMA | (read ? RTSX_DMA_READ : 0) |
 	       (physSize & 0x00ffffff));
 	
@@ -1139,6 +1155,8 @@ ret:
 	return error;
 }
 
+// linux function: rtsx_pci_sdmmc.c:sd_send_cmd_get_rsp()
+// This is run (originally) from the timer, and trying to change to get run from the task command gate
 void
 rtsx_exec_command(sdmmc_chipset_handle_t sch, struct sdmmc_command *cmd)
 {
@@ -1229,6 +1247,9 @@ rtsx_exec_command(sdmmc_chipset_handle_t sch, struct sdmmc_command *cmd)
 	sc->dmap_cmd = cmd_buffer;
 	
 	/* Run the command queue and wait for completion. */
+	UTL_DEBUG(1, "Executing cmd %d (%s) (sending %d commands) and waiting...",
+		  cmd->c_opcode,
+		  mmcCmd2str(cmd->c_opcode), ncmd);
 	error = rtsx_hostcmd_send(sc, ncmd);
 	if (error == 0)
 		error = rtsx_wait_intr(sc, RTSX_TRANS_OK_INT, hz);
@@ -1273,6 +1294,7 @@ ret:
 }
 
 /* Prepare for another command. */
+// linux: rtsx_prc.c:rtsx_pci_stop_cmd
 void
 rtsx_soft_reset(struct rtsx_softc *sc)
 {
@@ -1281,8 +1303,9 @@ rtsx_soft_reset(struct rtsx_softc *sc)
 	/* Stop command transfer. */
 	WRITE4(sc, RTSX_HCBCTLR, RTSX_STOP_CMD);
 	
-	(void)rtsx_write(sc, RTSX_CARD_STOP, RTSX_SD_STOP|RTSX_SD_CLR_ERR,
-			 RTSX_SD_STOP|RTSX_SD_CLR_ERR);
+	// linux does not do this...
+	//(void)rtsx_write(sc, RTSX_CARD_STOP, RTSX_SD_STOP|RTSX_SD_CLR_ERR,
+	//		 RTSX_SD_STOP|RTSX_SD_CLR_ERR);
 	
 	/* Stop DMA transfer. */
 	WRITE4(sc, RTSX_HDBCTLR, RTSX_STOP_DMA);
@@ -1297,6 +1320,7 @@ extern "C" {
 	extern int      tsleep(void *chan, int pri, const char *wmesg, int timo);
 }
 
+// This is called from the tasks (task work loop)
 int
 rtsx_wait_intr(struct rtsx_softc *sc, int mask, int timo)
 {
@@ -1312,6 +1336,7 @@ rtsx_wait_intr(struct rtsx_softc *sc, int mask, int timo)
 		if (tsleep(&sc->intr_status, PRIBIO, "rtsxintr", timo)
 		    == EWOULDBLOCK) {
 			rtsx_soft_reset(sc);
+			UTL_DEBUG(0, "tsleep timed out!");
 			error = ETIMEDOUT;
 			break;
 		}
@@ -1325,8 +1350,10 @@ rtsx_wait_intr(struct rtsx_softc *sc, int mask, int timo)
 	
 	splx(status);
 	
-	if (error == 0 && (status & RTSX_TRANS_FAIL_INT))
+	if (error == 0 && (status & RTSX_TRANS_FAIL_INT)) {
+		UTL_DEBUG(0, "Transmission failed (status = 0x%08x)", status);
 		error = EIO;
+	}
 	
 	return error;
 }
@@ -1349,6 +1376,7 @@ rtsx_card_insert(struct rtsx_softc *sc)
     //printf("%s()  <===\n", __func__);
 }
 
+// cholonam: This may be called from interrupt handler or by a user "eject" action.
 void
 rtsx_card_eject(struct rtsx_softc *sc)
 {
@@ -1374,7 +1402,30 @@ rtsx_intr(void *arg)
 	status = READ4(sc, RTSX_BIPR);
 	
 	/* Ack interrupts. */
+	UTL_DEBUG(2, "CLEARING PENDING INTERRUPTS.");
 	WRITE4(sc, RTSX_BIPR, status);
+	
+	// Log interrupt
+	//if (status && status != RTSX_SD_EXIST && status != 0xffffffff) {
+		UTL_DEBUG(1, "%s: INTERRUPT: STATUS = 0x%08x ENABLED = 0x%08x%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n",
+			    DEVNAME(sc), status, enabled,
+			    (status & RTSX_TRANS_OK_INT) ? " (TRANS OK)" : "",
+			    (status & RTSX_TRANS_FAIL_INT) ? " (TRANS FAIL)" : "",
+			    (status & RTSX_CMD_DONE_INT) ? " CMDDONE" : "",
+			    (status & RTSX_DATA_DONE_INT) ? " DATADONE" : "",
+			    (status & RTSX_TRANS_OK_INT) ? " XOK" : "",
+			    (status & RTSX_TRANS_FAIL_INT) ? " XFAIL" : "",
+			    (status & RTSX_XD_INT) ? " XD" : "",
+			    (status & RTSX_MS_INT) ? " MS" : "",
+			    (status & RTSX_SD_INT) ? " SD" : "",
+			    (status & RTSX_GPIO0_INT_EN) ? " GPIO0" : "",
+			    (status & RTSX_MS_OC_INT_EN) ? " MSOC" : "",
+			    (status & RTSX_SD_OC_INT_EN) ? " SDOC" : "",
+			    (status & RTSX_SD_WRITE_PROTECT) ? " WRITE_PROT" : "",
+			    (status & RTSX_XD_EXIST) ? " XD_EXIST" : "",
+			    (status & RTSX_MS_EXIST) ? " MS_EXIST" : "",
+			    (status & RTSX_SD_EXIST) ? " SD_EXIST" : "");
+	//}
 	
 	if (((enabled & status) == 0) || status == 0xffffffff)
 		return 0;
@@ -1386,6 +1437,7 @@ rtsx_intr(void *arg)
 		} else {
 			rtsx_card_eject(sc);
 		}
+		DPRINTF(1, ("rtsx_card_(insert|eject) RETURNED!"));
 	}
 	
 	if (status & (RTSX_TRANS_OK_INT | RTSX_TRANS_FAIL_INT)) {

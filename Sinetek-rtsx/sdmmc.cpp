@@ -64,6 +64,10 @@ void sdmmc_dump_command(struct sdmmc_softc *, struct sdmmc_command *);
 extern int splsdmmc();
 extern void splx(int);
 
+// must be after the definitions of splsdmmc/splx
+#define UTL_THIS_CLASS ""
+#include "util.h"
+
 void
 sdmmc_attach(struct sdmmc_softc *sc)
 {
@@ -92,18 +96,10 @@ sdmmc_attach(struct sdmmc_softc *sc)
         printf("%s: sc-scaps if <===\n", __func__);
 	}
 	
-    printf("%s: STAILQ_INIT ===>\n", __func__);
 	STAILQ_INIT(&sc->sf_head);
-    printf("%s: STAILQ_INIT <===\n", __func__);
-    printf("%s: TAILQ_INIT: tskq ===>\n", __func__);
 	TAILQ_INIT(&sc->sc_tskq);
-    printf("%s: TAILQ_INIT: tskq <===\n", __func__);
-    printf("%s: TAILQ_INIT: sc_intrq ===>\n", __func__);
 	TAILQ_INIT(&sc->sc_intrq);
-    printf("%s: TAILQ_INIT: sc_intrq <===\n", __func__);
-    printf("%s: sdmmc_init_task ===>\n", __func__);
 	sdmmc_init_task(&sc->sc_discover_task, sdmmc_discover_task, sc);
-    printf("%s: sdmmc_init_task <===\n", __func__);
 	
 #ifdef SDMMC_IOCTL
 	if (bio_register(self, sdmmc_ioctl) != 0)
@@ -209,23 +205,30 @@ sdmmc_detach(struct device *self, int flags)
 //	kthread_exit(0);
 //}
 
+// cholonam: This may be called from workloop...
 void
 sdmmc_add_task(struct sdmmc_softc *sc, struct sdmmc_task *task)
 {
+	UTL_DEBUG(1, "START");
 	int s;
 	
 	s = splsdmmc();
+	// cholonam: a race condition may happen here since an insert may be done by a client request, while a task is
+	//           being retrieved by the timer! -> we need to protect sc->sc_tskq
 	TAILQ_INSERT_TAIL(&sc->sc_tskq, task, next);
 	task->onqueue = 1;
 	task->sc = sc;
 	wakeup(&sc->sc_tskq);
 	sc->task_execute_one_->setTimeoutTicks(100 / 5);
 	splx(s);
+	UTL_DEBUG(1, "END");
 }
 
 void
 sdmmc_del_task(struct sdmmc_task *task)
 {
+    UTL_CHK_PTR(task,);
+    UTL_CHK_PTR(task->sc,);
 	struct sdmmc_softc *sc = task->sc;
 	int s;
 	
@@ -239,18 +242,27 @@ sdmmc_del_task(struct sdmmc_task *task)
 	splx(s);
 }
 
+// cholonam: This is called alled from card_insert/card_eject
 void
 sdmmc_needs_discover(struct device *self)
 {
+	UTL_DEBUG(0, "START");
 	struct sdmmc_softc *sc = (struct sdmmc_softc *)self;
+	
+	UTL_DEBUG(0, "Task pending (on queue): %d", sdmmc_task_pending(&sc->sc_discover_task));
 	
 	if (!sdmmc_task_pending(&sc->sc_discover_task))
 		sdmmc_add_task(sc, &sc->sc_discover_task);
+	UTL_DEBUG(0, "END");
 }
 
+// cholonam: This is called by a card insertion or ejection
 void
 sdmmc_discover_task(void *arg)
 {
+	if (!arg) return;
+	UTL_DEBUG(1, "START");
+
 	struct sdmmc_softc *sc = static_cast<struct sdmmc_softc *>(arg);
 	
 	if (rtsx_card_detect(sc)) {
@@ -266,10 +278,12 @@ sdmmc_discover_task(void *arg)
 	}
 	
 	if (ISSET(sc->sc_flags, SMF_CONFIG_PENDING)) {
+		UTL_DEBUG(1, "3...");
 		CLR(sc->sc_flags, SMF_CONFIG_PENDING);
 //		config_pending_decr();
 		printf("sdmmc: config_pending_decr() XXX\n");
 	}
+	UTL_DEBUG(1, "END");
 }
 
 /*
@@ -757,6 +771,15 @@ sdmmc_dump_command(struct sdmmc_softc *sc, struct sdmmc_command *cmd)
 	    "proc=\"%s\" (error %d)\n", DEVNAME(sc), cmd->c_opcode,
 	    cmd->c_arg, cmd->c_data, cmd->c_datalen, cmd->c_flags,
 	    "", cmd->c_error));
+    if (cmd->c_error) {
+        UTL_ERR("%s: cmd %u (%s) arg=%#x data=%p dlen=%d flags=%#x proc=\"%s\" "
+                "(error %d)\n", DEVNAME(sc), cmd->c_opcode, mmcCmd2str(cmd->c_opcode),
+                cmd->c_arg, cmd->c_data, cmd->c_datalen, cmd->c_flags, "", cmd->c_error);
+    } else {
+        UTL_DEBUG(2, "%s: cmd %u (%s) arg=%#x data=%p dlen=%d flags=%#x proc=\"%s\" "
+                  "(error %d)\n", DEVNAME(sc), cmd->c_opcode, mmcCmd2str(cmd->c_opcode),
+                  cmd->c_arg, cmd->c_data, cmd->c_datalen, cmd->c_flags, "", cmd->c_error);
+    }
 	
 	if (cmd->c_error || sdmmcdebug < 1)
 		return;

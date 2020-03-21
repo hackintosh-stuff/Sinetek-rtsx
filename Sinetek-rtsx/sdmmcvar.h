@@ -132,7 +132,7 @@ struct sdmmc_cis {
 	u_char		 cis1_major;
 	u_char		 cis1_minor;
 	char		 cis1_info_buf[256];
-	char		*cis1_info[4];
+	const char	*cis1_info[4];
 };
 
 /*
