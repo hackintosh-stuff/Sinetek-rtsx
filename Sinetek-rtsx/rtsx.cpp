@@ -21,6 +21,9 @@
  * Realtek RTS52xx/RTL84xx Card Reader driver.
  */
 
+#ifdef __APPLE__
+#include "openbsd/openbsd_compat.h"
+#else
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
@@ -30,6 +33,7 @@
 #include "sdmmcvar.h"
 #include "sdmmc_ioreg.h"
 #include "device.h"
+#endif // __APPLE__
 
 /*
  * We use two DMA buffers, a command buffer and a data buffer.
@@ -64,23 +68,6 @@ char * DEVNAME(rtsx_softc *)
 {
 	return (char*)"rtsx";
 }
-
-/* XXX this will polute the namespace. */
-int
-splsdmmc()
-{
-	return 0; /* internal value. */
-}
-
-/* XXX this will polute the namespace. */
-void
-splx(int)
-{
-}
-
-// must be after the definitions of splsdmmc/splx
-#define UTL_THIS_CLASS ""
-#include "util.h"
 
 /**
  *   'hz' contains tick rate.

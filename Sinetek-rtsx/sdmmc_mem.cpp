@@ -18,16 +18,14 @@
 
 /* Routines for SD/MMC memory cards. */
 
+#ifdef __APPLE__
+#include "openbsd/openbsd_compat.h"
+#else
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/systm.h>
-
-#include "sdmmcchip.h"
-#include "sdmmcreg.h"
-#include "sdmmcvar.h"
-
-#include "Sinetek_rtsx.hpp"
+#endif // __APPLE__
 
 typedef struct __attribute__((packed, aligned(4))) { uint32_t _bits[512/32]; } sdmmc_bitfield512_t;
 

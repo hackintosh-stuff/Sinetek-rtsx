@@ -18,14 +18,12 @@
 
 /* Routines to decode the Card Information Structure of SD I/O cards */
 
+#ifdef __APPLE__
+#include "openbsd/openbsd_compat.h"
+#else
 #include <sys/param.h>
 #include <sys/systm.h>
-
-#include "sdmmc_ioreg.h"
-#include "sdmmcdevs.h"
-#include "sdmmcvar.h"
-
-#include "Sinetek_rtsx.hpp"
+#endif // __APPLE__
 
 u_int32_t sdmmc_cisptr(struct sdmmc_function *);
 

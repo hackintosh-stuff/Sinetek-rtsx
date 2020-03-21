@@ -18,16 +18,14 @@
 
 /* Routines for SD I/O cards. */
 
+#ifdef __APPLE__
+#include "openbsd/openbsd_compat.h"
+#else
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/systm.h>
-
-#include "sdmmc_ioreg.h"
-#include "sdmmcchip.h"
-#include "sdmmcvar.h"
-
-#include "Sinetek_rtsx.hpp"
+#endif // __APPLE__
 
 struct sdmmc_intr_handler {
 	struct sdmmc_softc *ih_softc;

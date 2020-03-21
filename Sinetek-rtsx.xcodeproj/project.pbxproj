@@ -20,6 +20,7 @@
 
 /* Begin PBXFileReference section */
 		9355866F242211D600B8B0B9 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = "<none>"; };
+		93576F8524263CF3006F1A33 /* openbsd_compat.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = openbsd_compat.h; sourceTree = "<group>"; };
 		935884C92421D21500E781A7 /* util.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = util.h; sourceTree = "<group>"; };
 		9E11DE571E4CB19C00AF36C8 /* SDDisk.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SDDisk.cpp; sourceTree = "<group>"; };
 		9E11DE581E4CB19C00AF36C8 /* SDDisk.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = SDDisk.hpp; sourceTree = "<group>"; };
@@ -53,6 +54,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		93576F8424263CC8006F1A33 /* openbsd */ = {
+			isa = PBXGroup;
+			children = (
+				93576F8524263CF3006F1A33 /* openbsd_compat.h */,
+			);
+			path = openbsd;
+			sourceTree = "<group>";
+		};
 		9E9EED9E1E4C65AD00E640DB = {
 			isa = PBXGroup;
 			children = (
@@ -72,6 +81,7 @@
 		9E9EEDAA1E4C65AD00E640DB /* Sinetek-rtsx */ = {
 			isa = PBXGroup;
 			children = (
+				93576F8424263CC8006F1A33 /* openbsd */,
 				9E11DE571E4CB19C00AF36C8 /* SDDisk.cpp */,
 				9E11DE581E4CB19C00AF36C8 /* SDDisk.hpp */,
 				9E9EEDAB1E4C65AD00E640DB /* Sinetek_rtsx.hpp */,
@@ -149,6 +159,7 @@
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				English,
 				en,
 			);
 			mainGroup = 9E9EED9E1E4C65AD00E640DB;

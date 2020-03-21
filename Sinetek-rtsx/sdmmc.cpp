@@ -22,18 +22,14 @@
  * Simple Specification Version 1.0 (SDIO) and the Linux "mmc" driver.
  */
 
+#ifdef __APPLE__
+#include "openbsd/openbsd_compat.h"
+#else
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/systm.h>
-
-#include <IOKit/IOTimerEventSource.h>
-
-#include "sdmmcchip.h"
-#include "sdmmcreg.h"
-#include "sdmmcvar.h"
-
-#include "Sinetek_rtsx.hpp"
+#endif // __APPLE__
 
 void	sdmmc_attach(struct device *, struct device *, void *);
 int	sdmmc_detach(struct device *, int);
@@ -60,13 +56,6 @@ void sdmmc_dump_command(struct sdmmc_softc *, struct sdmmc_command *);
 #else
 #define DPRINTF(n,s)	do {} while (0)
 #endif
-
-extern int splsdmmc();
-extern void splx(int);
-
-// must be after the definitions of splsdmmc/splx
-#define UTL_THIS_CLASS ""
-#include "util.h"
 
 void
 sdmmc_attach(struct sdmmc_softc *sc)

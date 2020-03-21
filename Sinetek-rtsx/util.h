@@ -64,20 +64,6 @@ if (!(ptr)) { \
 } \
 } while (0)
 
-#if RTSX_USE_IOLOCK
-#define splsdmmc(...) UTLsplsdmmc(sc->splsdmmc_rec_lock)
-inline int UTLsplsdmmc(IORecursiveLock *l) {
-	IORecursiveLockLock(l);
-	UTL_DEBUG(2, "Locked splsdmmc_lock");
-	return 0;
-}
-
-#define splx(n) do { \
-	UTL_DEBUG(2, "Unlocking splsdmmc_lock"); \
-	IORecursiveLockUnlock(sc->splsdmmc_rec_lock); \
-} while (0)
-#endif
-
 #if RTSX_USE_IOMALLOC
 #define UTL_MALLOC(TYPE) (TYPE *) UTLMalloc(#TYPE, sizeof(TYPE))
 static inline void *UTLMalloc(const char *type, size_t sz) {
