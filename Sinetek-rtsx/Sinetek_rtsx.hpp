@@ -49,6 +49,11 @@ public:
 	 * rtsx_softc variables.
 	 */
 	int		flags;
+#if RTSX_USE_IOLOCK
+    IOLock *          intr_status_lock;
+    IORecursiveLock * splsdmmc_rec_lock;
+    bool              intr_status_event;
+#endif
 	uint32_t		intr_status;
 	u_int8_t		regs[RTSX_NREG];/* host controller state */
 	u_int32_t	regs4[6];	/* host controller state */

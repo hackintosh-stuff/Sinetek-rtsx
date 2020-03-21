@@ -40,6 +40,11 @@ bool rtsx_softc::start(IOService *provider)
 	if (!super::start(provider))
 		return false;
 
+#if RTSX_USE_IOLOCK
+	this->intr_status_lock = IOLockAlloc();
+	this->splsdmmc_rec_lock = IORecursiveLockAlloc();
+	this->intr_status_event = false;
+#endif // RTSX_USE_IOLOCK
 	assert(OSDynamicCast(IOPCIDevice, provider));
 	provider_ = OSDynamicCast(IOPCIDevice, provider);
 	if (!provider_)
@@ -160,6 +165,13 @@ void rtsx_softc::rtsx_pci_detach()
 	
 	workloop_->removeEventSource(intr_source_);
 	intr_source_->release();
+#if RTSX_USE_IOLOCK
+// should this be called in free()?
+	IORecursiveLockFree(this->splsdmmc_rec_lock);
+	this->splsdmmc_rec_lock = nullptr;
+	IOLockFree(this->intr_status_lock);
+	this->intr_status_lock = nullptr;
+#endif // RTSX_USE_IOLOCK
 }
 
 
@@ -216,6 +228,9 @@ void rtsx_softc::task_execute_one_impl_(OSObject *target, IOTimerEventSource *se
 	rtsx_softc *sc = (rtsx_softc *)target;
 	struct sdmmc_task *task;
 	
+#if RTSX_USE_IOLOCK
+	IORecursiveLockLock(sc->splsdmmc_rec_lock);
+#endif
 	for (task = TAILQ_FIRST(&sc->sc_tskq); task != NULL;
 	     task = TAILQ_FIRST(&sc->sc_tskq)) {
 		UTL_DEBUG(1, "  => Executing one task (CRASHED HERE!)...");
@@ -231,6 +246,9 @@ void rtsx_softc::task_execute_one_impl_(OSObject *target, IOTimerEventSource *se
         }
 #endif
 	}
+#if RTSX_USE_IOLOCK
+	IORecursiveLockUnlock(sc->splsdmmc_rec_lock);
+#endif
 	UTL_DEBUG(1, "  <=== RELEASING TASK WORKLOOP...");
 }
 

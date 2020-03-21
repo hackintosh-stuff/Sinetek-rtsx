@@ -1333,6 +1333,56 @@ rtsx_wait_intr(struct rtsx_softc *sc, int mask, int timo)
 	status = splsdmmc();
 	status = sc->intr_status & mask;
 	while (status == 0) {
+#if RTSX_USE_IOLOCK
+		IOLockLock(sc->intr_status_lock);
+		if (sc->intr_status_event) {
+			UTL_DEBUG(2, "Interrupt was already here!");
+			sc->intr_status_event = false;
+			status = sc->intr_status & mask;
+		} else {
+			UTL_DEBUG(2, "Thread 0x%016llx waiting for interrupt (intr_status_event=%s)...",
+				reinterpret_cast<int64_t>(IOThreadSelf()),
+				sc->intr_status_event ? "true" : "false");
+			auto ret = IOLockSleepDeadline(sc->intr_status_lock, &sc->intr_status_event,
+				timo2AbsoluteTimeDeadline(timo), THREAD_UNINT);
+			sc->intr_status_event = false;
+			if (ret != THREAD_AWAKENED) {
+				auto status = READ4(sc, RTSX_BIPR);
+				auto bier = READ4(sc, RTSX_BIER);
+				IOLockUnlock(sc->intr_status_lock);
+				UTL_DEBUG(0, "rtsx: THREAD NOT AWAKENED (%s) BIER=0x%08x BIPR=0x%08x%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s!",
+					ret == -1 ? "waiting" :
+					ret ==  0 ? "awakened" :
+					ret ==  1 ? "timed out" :
+					ret ==  2 ? "interrupted" :
+					ret ==  3 ? "restart" : "?",
+					bier, status,
+					(status & RTSX_TRANS_OK_INT) ? " (TRANS OK)" : "",
+					(status & RTSX_TRANS_FAIL_INT) ? " (TRANS FAIL)" : "",
+					(status & RTSX_CMD_DONE_INT) ? " CMDDONE" : "",
+					(status & RTSX_DATA_DONE_INT) ? " DATADONE" : "",
+					(status & RTSX_TRANS_OK_INT) ? " XOK" : "",
+					(status & RTSX_TRANS_FAIL_INT) ? " XFAIL" : "",
+					(status & RTSX_XD_INT) ? " XD" : "",
+					(status & RTSX_MS_INT) ? " MS" : "",
+					(status & RTSX_SD_INT) ? " SD" : "",
+					(status & RTSX_GPIO0_INT_EN) ? " GPIO0" : "",
+					(status & RTSX_MS_OC_INT_EN) ? " MSOC" : "",
+					(status & RTSX_SD_OC_INT_EN) ? " SDOC" : "",
+					(status & RTSX_SD_WRITE_PROTECT) ? " WRITE_PROT" : "",
+					(status & RTSX_XD_EXIST) ? " XD_EXIST" : "",
+					(status & RTSX_MS_EXIST) ? " MS_EXIST" : "",
+					(status & RTSX_SD_EXIST) ? " SD_EXIST" : ""
+				);
+				rtsx_soft_reset(sc);
+				error = ETIMEDOUT;
+				break;
+			}
+			UTL_DEBUG(2, "rtsx: THREAD AWAKENED!\n");
+			status = sc->intr_status & mask;
+		}
+		IOLockUnlock(sc->intr_status_lock);
+#else
 		if (tsleep(&sc->intr_status, PRIBIO, "rtsxintr", timo)
 		    == EWOULDBLOCK) {
 			rtsx_soft_reset(sc);
@@ -1341,6 +1391,7 @@ rtsx_wait_intr(struct rtsx_softc *sc, int mask, int timo)
 			break;
 		}
 		status = sc->intr_status & mask;
+#endif
 	}
 	sc->intr_status &= ~status;
 	
@@ -1441,8 +1492,19 @@ rtsx_intr(void *arg)
 	}
 	
 	if (status & (RTSX_TRANS_OK_INT | RTSX_TRANS_FAIL_INT)) {
+#if RTSX_USE_IOLOCK
+		IOLockLock(sc->intr_status_lock);
+		UTL_DEBUG(2, "Thread 0x%016llx waking waiting thread (intr_status_event: %s => true)...",
+			reinterpret_cast<int64_t>(IOThreadSelf()),
+			sc->intr_status_event ? "true" : "false");
+		sc->intr_status_event = true;
+		sc->intr_status |= status;
+		IOLockWakeup(sc->intr_status_lock, &sc->intr_status_event, true); // wake waiting thread
+		IOLockUnlock(sc->intr_status_lock);
+#else
 		sc->intr_status |= status;
 		wakeup(&sc->intr_status);
+#endif
 	}
 	
 	return 1;

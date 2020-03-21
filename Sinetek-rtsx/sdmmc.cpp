@@ -218,7 +218,11 @@ sdmmc_add_task(struct sdmmc_softc *sc, struct sdmmc_task *task)
 	TAILQ_INSERT_TAIL(&sc->sc_tskq, task, next);
 	task->onqueue = 1;
 	task->sc = sc;
+#if RTSX_USE_IOLOCK
+	
+#else
 	wakeup(&sc->sc_tskq);
+#endif
 	sc->task_execute_one_->setTimeoutTicks(100 / 5);
 	splx(s);
 	UTL_DEBUG(1, "END");
