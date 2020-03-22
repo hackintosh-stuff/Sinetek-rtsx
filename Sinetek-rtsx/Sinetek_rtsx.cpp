@@ -152,7 +152,6 @@ void rtsx_softc::rtsx_pci_attach()
         case PCI_PRODUCT_REALTEK_RTS525A:
             /* syscl - RTS525A */
             flags = RTSX_F_525A;
-            bar = RTSX_PCI_BAR_525A;
             break;
         default:
             flags = 0;
