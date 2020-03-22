@@ -77,7 +77,10 @@ do { \
 } while (0)
 #else // RTSX_USE_IOMALLOC
 #define UTL_MALLOC(TYPE) new TYPE
-#define UTL_FREE(ptr, TYPE) delete ptr
+#define UTL_FREE(ptr, TYPE) do { \
+    delete ptr; \
+    ptr = nullptr; \
+} while (0)
 #endif // RTSX_USE_IOMALLOC
 
 static inline AbsoluteTime timo2AbsoluteTimeDeadline(int timo) {
