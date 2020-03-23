@@ -3,6 +3,7 @@
 
 #include <os/log.h>
 
+#include <IOKit/IOLib.h> // IOSleep
 #include <IOKit/IOMemoryDescriptor.h> // IOMemoryDescriptor
 
 #ifndef UTL_THIS_CLASS
