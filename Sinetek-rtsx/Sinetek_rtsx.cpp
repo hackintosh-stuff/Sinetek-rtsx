@@ -284,7 +284,7 @@ void rtsx_softc::task_execute_one_impl_(OSObject *target, IOTimerEventSource *se
  */
 void rtsx_softc::blk_attach()
 {
-	printf("rtsx: blk_attack()\n");
+	printf("rtsx: blk_attach()\n");
 	
 	sddisk_ = new SDDisk();
 	sddisk_->init(this);
