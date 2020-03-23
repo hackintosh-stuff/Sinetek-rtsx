@@ -13,6 +13,15 @@
 #define UTL_LOG(fmt, ...) \
     os_log(OS_LOG_DEFAULT, "rtsx: %12s%-22s: " fmt "\n", UTL_THIS_CLASS, __func__, ##__VA_ARGS__); \
 
+#define UTL_CHK_SUCCESS(expr) \
+({ \
+    auto sinetek_rtsx_utl_chk_success = expr; \
+    if (sinetek_rtsx_utl_chk_success != kIOReturnSuccess) { \
+        UTL_ERR("%s returns error %d", #expr, sinetek_rtsx_utl_chk_success); \
+    } \
+    sinetek_rtsx_utl_chk_success; \
+})
+
 #if DEBUG
 //#define UTL_DEBUG_LEVEL 2
 #ifndef UTL_DEBUG_LEVEL
@@ -90,6 +99,39 @@ static inline AbsoluteTime timo2AbsoluteTimeDeadline(int timo) {
 	nanoseconds_to_absolutetime(nsDelay, &absInterval);
 	clock_absolutetime_interval_to_deadline(absInterval, &deadline);
 	return deadline;
+}
+
+/// Only valid between prepare() and complete()
+static inline size_t bufferNSegments(IOMemoryDescriptor *md) {
+    size_t ret = 0;
+#if DEBUG
+    uint64_t len = md->getLength();
+
+    uint64_t thisOffset = 0;
+    while (thisOffset < len) {
+        ret++;
+        IOByteCount thisSegLen;
+        if (!md->getPhysicalSegment(thisOffset, &thisSegLen, kIOMemoryMapperNone)) return 0;
+        thisOffset += thisSegLen;
+    }
+#endif // DEBUG
+    return ret;
+}
+
+/// Only valid between prepare() and complete()
+static inline void dumpBuffer(IOMemoryDescriptor *md) {
+#if DEBUG
+    auto len = md->getLength();
+
+    uint64_t thisOffset = 0;
+    while (thisOffset < len) {
+        uint64_t thisSegLen;
+        auto addr = md->getPhysicalSegment(thisOffset, &thisSegLen, kIOMemoryMapperNone | md->getDirection());
+        UTL_DEBUG(0, " - Segment: Addr: 0x%016llx Len: %llu", addr, thisSegLen);
+        if (!addr) return;
+        thisOffset += thisSegLen;
+    }
+#endif // DEBUG
 }
 
 #endif /* SINETEK_RTSX_UTIL_H */

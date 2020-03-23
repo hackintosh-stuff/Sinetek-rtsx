@@ -1098,6 +1098,10 @@ rtsx_xfer(struct rtsx_softc *sc, struct sdmmc_command *cmd, u_int32_t *cmdbuf)
 					0x00000000ffffffffull);
 	if (!data_buffer)
 		goto ret;
+	UTL_CHK_SUCCESS(data_buffer->prepare());
+	if (bufferNSegments(data_buffer) > 1) {
+		dumpBuffer(data_buffer);
+	}
 	datakvap = (caddr_t)data_buffer->getBytesNoCopy();
 	physAddr = data_buffer->getPhysicalSegment(0, &physSize);
 	if (physSize == 0)
@@ -1136,6 +1140,7 @@ unload_databuf:
 unmap_databuf:
 	sc->dmap_data = NULL;
 free_databuf:
+	UTL_CHK_SUCCESS(data_buffer->complete());
 	data_buffer->release();
 ret:
 	DPRINTF(3,("%s: xfer done, error=%d\n", DEVNAME(sc), error));

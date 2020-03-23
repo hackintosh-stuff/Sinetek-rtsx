@@ -277,8 +277,9 @@ void read_task_impl_(void *_args)
 #if RTSX_USE_WRITEBYTES
 	u_char buf[512];
 #else
-	auto map = args->buffer->map();
-	u_char * buf = (u_char *) map->getVirtualAddress();
+    { auto map = args->buffer->map();
+	// this is for 32-bit?? u_char * buf = (u_char *) map->getVirtualAddress();
+    u_char *buf = (u_char *) map->getAddress();
 	
 	for (UInt64 b = 0; b < args->nblks; ++b)
 	{
@@ -288,6 +289,7 @@ void read_task_impl_(void *_args)
 					  0, buf, 512);
 		sdmmc_go_idle_state(args->that->provider_);
 	}
+    map->release(); } // need to release map
 #endif
 		
 	for (UInt64 b = 0; b < args->nblks; b++)
