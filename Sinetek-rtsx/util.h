@@ -3,6 +3,8 @@
 
 #include <os/log.h>
 
+#include <IOKit/IOMemoryDescriptor.h> // IOMemoryDescriptor
+
 #ifndef UTL_THIS_CLASS
 #error UTL_THIS_CLASS must be defined before including this file (i.e.: #define UTL_THIS_CLASS "SDDisk::").
 #endif
