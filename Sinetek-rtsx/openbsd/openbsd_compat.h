@@ -4,9 +4,10 @@
 #define SINETEK_RTSX_OPENBSD_OPENBSD_COMPAT_H
 
 // include necessary headers
-#include <sys/param.h>
-#include <sys/kernel.h>
-#include <sys/systm.h>
+#include <sys/cdefs.h> // __BEGIN_DECLS, __END_DECLS
+__BEGIN_DECLS
+#include <sys/systm.h> // MIN, EINVAL, ENOMEM, etc...
+__END_DECLS
 
 #include <IOKit/IOTimerEventSource.h>
 
