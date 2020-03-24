@@ -283,11 +283,11 @@ void read_task_impl_(void *_args)
 	
 	for (UInt64 b = 0; b < args->nblks; ++b)
 	{
-		sdmmc_mem_single_read_block(args->that->provider_->sc_fn0,
-						    0, buf + b * 512, 512);
+//		sdmmc_mem_single_read_block(args->that->provider_->sc_fn0,
+//						    0, buf + b * 512, 512);
 		sdmmc_mem_read_block_subr(args->that->provider_->sc_fn0,
 					  0, buf, 512);
-		sdmmc_go_idle_state(args->that->provider_);
+//		sdmmc_go_idle_state(args->that->provider_);
 	}
     map->release(); } // need to release map
 #endif
