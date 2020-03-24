@@ -33,3 +33,4 @@
 *.xcodeproj/project.xcworkspace
 *.xcodeproj/xcuserdata
 build
+.vscode
