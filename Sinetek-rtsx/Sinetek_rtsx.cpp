@@ -74,6 +74,7 @@ bool rtsx_softc::start(IOService *provider)
 	return true;
 }
 
+// WATCH OUT: stop() may not be called if start() fails!
 void rtsx_softc::stop(IOService *provider)
 {
 	rtsx_pci_detach();
@@ -289,8 +290,9 @@ void rtsx_softc::blk_attach()
 	sddisk_ = new SDDisk();
 	sddisk_->init(this);
 	sddisk_->attach(this);
-	//sddisk_->release();
-	sddisk_->registerService();
+    UTL_DEBUG(0, "Registering service...");
+	sddisk_->registerService(); // this should probably be called by the start() method of sddisk_
+    sddisk_->release();
 }
 
 void rtsx_softc::blk_detach()

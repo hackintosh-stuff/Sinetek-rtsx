@@ -15,6 +15,16 @@
 #define super IOBlockStorageDevice
 OSDefineMetaClassAndStructors(SDDisk, IOBlockStorageDevice)
 
+/// This is a nub, and a nub should be quite stupid, but this is not. Check:
+/// https://github.com/zfsrogue/osx-zfs-crypto/blob/master/module/zfs/zvolIO.cpp -> A good nub, it just gets a state
+/// from the provider (no memory allocations or resources needed. Just forward everything to the provider (except the
+/// doAsyncReadWrite() method).
+/// Also:
+/// https://opensource.apple.com/source/IOATABlockStorage/IOATABlockStorage-112.0.1/ ->
+/// IOATABlockStorage(Device/Driver) is another good example (note that IOATABlockStorageDriver does not inherit from
+/// IOBlockStorageDriver, because it's not the same (IOATABlockStorageDriver is the provider of IOATABlockStorageDriver,
+/// but IOBlockStorageDriver is the CLIENT of IOBlockStorageDevice). This one DOES forward doAsyncReadWrite.
+
 bool SDDisk::init(struct sdmmc_softc *sc_sdmmc, OSDictionary* properties)
 {
 	UTL_DEBUG(0, "START");

@@ -521,9 +521,11 @@ sdmmc_init(struct sdmmc_softc *sc)
 	
 	/* Any good functions left after initialization? */
 	STAILQ_FOREACH(sf, &sc->sf_head, sf_list) {
+		UTL_DEBUG(0, "rstx: IDENTIFIED FUNCTION... (sc->sc_flags = 0x%02x)", sc->sc_flags);
 		if (!ISSET(sf->flags, SFF_ERROR))
 			return 0;
 	}
+	UTL_ERR("NO FUNCTIONS WERE FOUND!");
 	/* No, we should probably power down the card. */
 	return 1;
 }
