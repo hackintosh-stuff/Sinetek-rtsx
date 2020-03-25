@@ -37,7 +37,7 @@ inline int UTLsplsdmmc(IORecursiveLock *l) {
 
 // disable execcisve logging from OpenBSD code
 #if DEBUG
-#define printf(...) UTL_DBG(1, __VA_ARGS__)
+#define printf(...) UTL_DEBUG(1, __VA_ARGS__)
 #else
 #define printf(...) do {} while (0)
 #endif
