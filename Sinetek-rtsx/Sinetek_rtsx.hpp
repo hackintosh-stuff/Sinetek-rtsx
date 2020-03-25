@@ -38,6 +38,10 @@ public:
 	void blk_attach();
 	void blk_detach();
 	
+#if RTSX_USE_IOFIES
+	static bool is_my_interrupt(OSObject *arg, IOFilterInterruptEventSource *source);
+#endif // RTSX_USE_IOFIES
+    
 	// ** //
 	IOPCIDevice *		provider_;
 	IOWorkLoop *		workloop_;

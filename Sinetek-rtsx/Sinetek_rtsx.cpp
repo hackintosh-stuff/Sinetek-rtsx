@@ -18,6 +18,11 @@ OSDefineMetaClassAndStructors(rtsx_softc, super);
 #define UTL_THIS_CLASS "rtsx_softc::"
 #include "util.h"
 
+// use the ones in rtsx.cpp (they are not declared static)
+uint32_t READ4(rtsx_softc *sc, uint32_t reg);
+void WRITE4(rtsx_softc *sc, uint32_t reg, uint32_t val);
+
+
 //
 // syscl - define & enumerate power states
 //
@@ -304,6 +309,26 @@ void rtsx_softc::blk_detach()
 	}
 	UTL_DEBUG(0, "END");
 }
+
+#if RTSX_USE_IOFIES
+/// This function runs in interrupt context, meaning that IOLog CANNOT be used (only basic functionality is available).
+bool rtsx_softc::is_my_interrupt(OSObject *arg, IOFilterInterruptEventSource *source) {
+    if (!arg) return false;
+
+    rtsx_softc *sc = (rtsx_softc*) arg;
+
+    auto status = READ4(sc, RTSX_BIPR);
+    if (!status) {
+        return false;
+    }
+
+    auto bier = READ4(sc, RTSX_BIER);
+    if ((status & bier) == 0) return false;
+
+    return true;
+}
+#endif // RTSX_USE_IOFIES
+
 
 #if RTSX_USE_IOCOMMANDGATE
 void rtsx_softc::executeOneAsCommand() {

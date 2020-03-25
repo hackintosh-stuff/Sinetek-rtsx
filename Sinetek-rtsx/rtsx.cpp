@@ -1511,22 +1511,3 @@ rtsx_intr(void *arg)
 	
 	return 1;
 }
-
-#if RTSX_USE_IOFIES
-/// This function runs in interrupt context, meaning that IOLog CANNOT be used (only basic functionality is available).
-bool is_my_interrupt(OSObject *arg, IOFilterInterruptEventSource *source) {
-	if (!arg) return false;
-
-	rtsx_softc *sc = (rtsx_softc*) arg;
-
-	auto status = READ4(sc, RTSX_BIPR);
-	if (!status) {
-		return false;
-	}
-
-	auto bier = READ4(sc, RTSX_BIER);
-	if ((status & bier) == 0) return false;
-
-	return true;
-}
-#endif // RTSX_USE_IOFIES
