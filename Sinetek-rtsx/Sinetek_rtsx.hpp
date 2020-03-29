@@ -158,4 +158,7 @@ public:
     bus_dma_segment_t      *adma_segs;
     struct device          *sdmmc;
     struct device           sc_dev; // parent?
+    long sc_max_seg;
+    //long sc_max_xfer;
+    void *sc_cookies[SDMMC_MAX_FUNCTIONS];
 };

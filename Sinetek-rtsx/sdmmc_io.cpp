@@ -164,9 +164,7 @@ sdmmc_io_scan(struct sdmmc_softc *sc)
 		sf = sdmmc_function_alloc(sc);
 		sf->number = i;
 		sf->rca = sf0->rca;
-#ifndef __APPLE__
 		sf->cookie = sc->sc_cookies[i];
-#endif
 
 		SIMPLEQ_INSERT_TAIL(&sc->sf_head, sf, sf_list);
 	}
@@ -192,7 +190,6 @@ sdmmc_io_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 		sdmmc_print_cis(sf);
 
 	if (sf->number == 0) {
-#ifndef __APPLE__
 		if (ISSET(sc->sc_caps, SMC_CAPS_SD_HIGHSPEED) &&
 		    sdmmc_io_set_highspeed(sf, 1) == 0) {
 			(void)sdmmc_chip_bus_clock(sc->sct, sc->sch,
@@ -204,7 +201,6 @@ sdmmc_io_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 		} else
 			(void)sdmmc_chip_bus_clock(sc->sct, sc->sch,
 			    SDMMC_SDCLK_25MHZ, SDMMC_TIMING_LEGACY);
-#endif
 	}
 
 	return 0;
@@ -767,7 +763,6 @@ sdmmc_intr_disable(struct sdmmc_function *sf)
 	sdmmc_io_write_1(sf0, SD_IO_CCCR_INT_ENABLE, imask);
 }
 
-#ifndef __APPLE__
 /*
  * Establish a handler for the SDIO card interrupt.  Because the
  * interrupt may be shared with different SDIO functions, multiple
@@ -784,7 +779,11 @@ sdmmc_intr_establish(struct device *sdmmc, int (*fun)(void *),
 	if (sc->sct->card_intr_mask == NULL)
 		return NULL;
 
+#if __APPLE__
+	ih = (sdmmc_intr_handler *) malloc(sizeof *ih, M_DEVBUF, M_WAITOK | M_CANFAIL | M_ZERO);
+#else
 	ih = malloc(sizeof *ih, M_DEVBUF, M_WAITOK | M_CANFAIL | M_ZERO);
+#endif
 	if (ih == NULL)
 		return NULL;
 
@@ -809,7 +808,11 @@ sdmmc_intr_establish(struct device *sdmmc, int (*fun)(void *),
 void
 sdmmc_intr_disestablish(void *cookie)
 {
+#if __APPLE__
+	struct sdmmc_intr_handler *ih = (struct sdmmc_intr_handler *) cookie;
+#else
 	struct sdmmc_intr_handler *ih = cookie;
+#endif
 	struct sdmmc_softc *sc = ih->ih_softc;
 	int s;
 
@@ -847,7 +850,11 @@ sdmmc_card_intr(struct device *sdmmc)
 void
 sdmmc_intr_task(void *arg)
 {
+#if __APPLE__
+	struct sdmmc_softc *sc = (struct sdmmc_softc *) arg;
+#else
 	struct sdmmc_softc *sc = arg;
+#endif
 	struct sdmmc_intr_handler *ih;
 	int s;
 
@@ -885,7 +892,6 @@ sdmmc_io_set_blocklen(struct sdmmc_function *sf, unsigned int blklen)
 	    SD_IO_FBR_BLOCKLEN+ 1, (blklen >> 8) & 0xff);
 	sf->cur_blklen = blklen;
 }
-#endif // __APPLE__
 
 void
 sdmmc_io_set_bus_width(struct sdmmc_function *sf, int width)

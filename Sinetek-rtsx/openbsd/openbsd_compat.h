@@ -32,6 +32,12 @@ inline int UTLsplsdmmc(IORecursiveLock *l) {
     return 0;
 }
 
+#define splhigh() ({ \
+    /* UTL_DEBUG(2, "Locking splsdmmc_lock"); */ \
+    IORecursiveLockLock(sc->splsdmmc_rec_lock); \
+    0; \
+})
+
 #define splx(n) do { \
     /* UTL_DEBUG(2, "Unlocking splsdmmc_lock"); */ \
     IORecursiveLockUnlock(sc->splsdmmc_rec_lock); \
@@ -41,7 +47,7 @@ inline int UTLsplsdmmc(IORecursiveLock *l) {
 #define tlseep_nsec(a1, a2, a3, a4) \
 do { \
 } while(0)
-#endif
+#endif // RTSX_USE_IOLOCK
 
 // SIMPLEQ -> STAILQ
 #define SIMPLEQ_EMPTY       STAILQ_EMPTY
@@ -80,14 +86,26 @@ do { \
 #define __aligned(N)
 
 // rwlock
+#define rw_init(a1, a2) do {} while (0)
 #define rw_assert_wrlock(a1) do {} while (0)
 #define rw_enter_write(a1) do {} while (0)
 #define rw_exit(a1) do {} while (0)
 
 #define tsleep_nsec(a1, a2, a3, a4) ((int)0) /* expects an expression */
 
+constexpr int cold = 1;
+struct rtsx_proc {
+    struct ps_comm_st {
+        const char *ps_comm;
+    };
+    struct ps_comm_st *p_p;
+};
+constexpr rtsx_proc *curproc = nullptr;
+#define tsleep(a1, a2, a3, a4) do {} while (0)
+
 // scsi
 #define sdmmc_scsi_attach(a1) do {} while (0)
+#define sdmmc_scsi_detach(a1) do {} while (0)
 
 extern int hz;
 #include "openbsd_compat_types.h"
@@ -111,6 +129,11 @@ extern int hz;
 #define config_detach(a1, a2) do {} while (0)
 #define config_found_sm(a1, a2, a3, a4) (0) /* expects an expression */
 
+// kthread*
+#define kthread_create(a1, a2, a3, a4) (0) /* expects an expression */
+#define kthread_create_deferred(a1, a2) do {} while (0)
+#define kthread_exit(a1) do {} while (0)
+
 //#define sdmmc_needs_discover(a1) ((void)0)
 
 #define be32toh OSSwapBigToHostInt32
@@ -119,9 +142,9 @@ extern int hz;
 #define htole64 OSSwapHostToLittleInt64
 #define nitems(v) (sizeof(v) / sizeof((v)[0]))
 
-#ifndef M_DEVBUF
-#   define M_DEVBUF 0 // seems like not used on macOS
-#endif
+#define M_CANFAIL 0 // seems like not defined on macOS
+#define M_DEVBUF 0 // seems like not defined on macOS
+
 static inline void *malloc(size_t size, int type, int flags) {
     return _MALLOC(size, type, flags);
 }
@@ -132,7 +155,6 @@ static inline void free(void *addr, int type, int flags) {
 static inline void delay(unsigned int microseconds) {
     IODelay(microseconds);
 }
-#define delay(t) IODelay(t)
 
 #undef READ4
 #define READ4(sc, reg) \

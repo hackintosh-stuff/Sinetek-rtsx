@@ -151,7 +151,7 @@ struct sdmmc_function {
 #define SFF_ERROR		0x0001	/* function is poo; ignore it */
 #define SFF_SDHC		0x0002	/* SD High Capacity card */
 	void *cookie;			/* pass extra info from bus to dev */
-    SIMPLEQ_ENTRY(sdmmc_function) sf_list;
+	SIMPLEQ_ENTRY(sdmmc_function) sf_list;
 	/* SD card I/O function members */
 	int number;			/* I/O function number or -1 */
 	struct device *child;		/* function driver */

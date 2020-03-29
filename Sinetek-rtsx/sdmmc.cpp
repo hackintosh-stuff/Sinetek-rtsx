@@ -77,7 +77,6 @@ void sdmmc_dump_command(struct sdmmc_softc *, struct sdmmc_command *);
 #define DPRINTF(n,s)	do {} while (0)
 #endif
 
-#ifndef __APPLE__
 struct cfattach sdmmc_ca = {
 	sizeof(struct sdmmc_softc), sdmmc_match, sdmmc_attach, sdmmc_detach,
 	sdmmc_activate
@@ -90,19 +89,26 @@ struct cfdriver sdmmc_cd = {
 int
 sdmmc_match(struct device *parent, void *match, void *aux)
 {
+#if __APPLE__
+	struct cfdata *cf = (struct cfdata *) match;
+	struct sdmmcbus_attach_args *saa = (struct sdmmcbus_attach_args *) aux;
+#else
 	struct cfdata *cf = match;
 	struct sdmmcbus_attach_args *saa = aux;
+#endif
 
 	return strcmp(saa->saa_busname, cf->cf_driver->cd_name) == 0;
 }
-#endif // __APPLE__
 
 void
 sdmmc_attach(struct device *parent, struct device *self, void *aux)
 {
-#ifndef __APPLE__ // TODO: Finish this
 	struct sdmmc_softc *sc = (struct sdmmc_softc *)self;
+#if __APPLE__
+	struct sdmmcbus_attach_args *saa = (struct sdmmcbus_attach_args *) aux;
+#else
 	struct sdmmcbus_attach_args *saa = aux;
+#endif
 	int error;
 
 	if (ISSET(saa->caps, SMC_CAPS_8BIT_MODE))
@@ -159,13 +165,11 @@ sdmmc_attach(struct device *parent, struct device *self, void *aux)
 	SET(sc->sc_flags, SMF_CONFIG_PENDING);
 	config_pending_incr();
 	kthread_create_deferred(sdmmc_create_thread, sc);
-#endif // __APPLE__
 }
 
 int
 sdmmc_detach(struct device *self, int flags)
 {
-#ifndef __APPLE__ // TODO: Finish this
 	struct sdmmc_softc *sc = (struct sdmmc_softc *)self;
 
 	sc->sc_dying = 1;
@@ -177,18 +181,15 @@ sdmmc_detach(struct device *self, int flags)
 	if (sc->sc_dmap)
 		bus_dmamap_destroy(sc->sc_dmat, sc->sc_dmap);
 
-#endif // __APPLE__
 	return 0;
 }
 
 int
 sdmmc_activate(struct device *self, int act)
 {
-
 	struct sdmmc_softc *sc = (struct sdmmc_softc *)self;
 	int rv = 0;
 
-#ifndef __APPLE__ // TODO: Finish this
 	switch (act) {
 	case DVACT_SUSPEND:
 		rv = config_activate_children(self, act);
@@ -205,15 +206,17 @@ sdmmc_activate(struct device *self, int act)
 		rv = config_activate_children(self, act);
 		break;
 	}
-#endif // __APPLE__
 	return (rv);
 }
 
-#ifndef __APPLE__
 void
 sdmmc_create_thread(void *arg)
 {
+#if __APPLE__
+	struct sdmmc_softc *sc = (struct sdmmc_softc *) arg;
+#else
 	struct sdmmc_softc *sc = arg;
+#endif
 
 	if (kthread_create(sdmmc_task_thread, sc, &sc->sc_task_thread,
 	    DEVNAME(sc)) != 0)
@@ -224,7 +227,11 @@ sdmmc_create_thread(void *arg)
 void
 sdmmc_task_thread(void *arg)
 {
+#if __APPLE__
+	struct sdmmc_softc *sc = (struct sdmmc_softc *) arg;
+#else
 	struct sdmmc_softc *sc = arg;
+#endif
 	struct sdmmc_task *task;
 	int s;
 
@@ -263,7 +270,6 @@ restart:
 	wakeup(sc);
 	kthread_exit(0);
 }
-#endif // __APPLE__
 
 void
 sdmmc_add_task(struct sdmmc_softc *sc, struct sdmmc_task *task)
@@ -306,8 +312,11 @@ sdmmc_needs_discover(struct device *self)
 void
 sdmmc_discover_task(void *arg)
 {
-#ifndef __APPLE__
+#if __APPLE__
+	struct sdmmc_softc *sc = (struct sdmmc_softc *) arg;
+#else
 	struct sdmmc_softc *sc = arg;
+#endif
 
 	if (sdmmc_chip_card_detect(sc->sct, sc->sch)) {
 		if (!ISSET(sc->sc_flags, SMF_CARD_PRESENT)) {
@@ -327,7 +336,6 @@ sdmmc_discover_task(void *arg)
 		CLR(sc->sc_flags, SMF_CONFIG_PENDING);
 		config_pending_decr();
 	}
-#endif
 }
 
 /*
@@ -400,11 +408,9 @@ sdmmc_card_detach(struct sdmmc_softc *sc, int flags)
 		if (ISSET(sc->sc_flags, SMF_IO_MODE))
 			sdmmc_io_detach(sc);
 
-#ifndef __APPLE__
 		/* Detach the SCSI emulation for memory cards. */
 		if (ISSET(sc->sc_flags, SMF_MEM_MODE))
 			sdmmc_scsi_detach(sc);
-#endif
 
 		CLR(sc->sc_flags, SMF_CARD_ATTACHED);
 	}
@@ -434,7 +440,6 @@ sdmmc_enable(struct sdmmc_softc *sc)
 	 * Calculate the equivalent of the card OCR from the host
 	 * capabilities and select the maximum supported bus voltage.
 	 */
-#ifndef __APPLE__
 	host_ocr = sdmmc_chip_host_ocr(sc->sct, sc->sch);
 	error = sdmmc_chip_bus_power(sc->sct, sc->sch, host_ocr);
 	if (error != 0) {
@@ -451,7 +456,6 @@ sdmmc_enable(struct sdmmc_softc *sc)
 		printf("%s: can't supply clock\n", DEVNAME(sc));
 		goto err;
 	}
-#endif
 
 	/* XXX wait for card to power up */
 	sdmmc_delay(250000);
@@ -597,11 +601,6 @@ sdmmc_init(struct sdmmc_softc *sc)
 	return 1;
 }
 
-#if __APPLE__
-void sdmmc_delay(u_int usecs) {
-    IODelay(usecs);
-}
-#else
 void
 sdmmc_delay(u_int usecs)
 {
@@ -612,7 +611,6 @@ sdmmc_delay(u_int usecs)
 	else
 		delay(usecs);
 }
-#endif
 
 int
 sdmmc_app_command(struct sdmmc_softc *sc, struct sdmmc_command *cmd)

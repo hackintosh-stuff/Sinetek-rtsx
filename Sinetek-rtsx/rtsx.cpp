@@ -631,7 +631,7 @@ rtsx_bus_power(sdmmc_chipset_handle_t sch, u_int32_t ocr)
 #else
 	struct rtsx_softc *sc = sch;
 #endif
-    int s, error = 0;
+	int s, error = 0;
 
 	DPRINTF(1,("%s: voltage change ocr=0x%x\n", DEVNAME(sc), ocr));
 
