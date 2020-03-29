@@ -29,8 +29,11 @@
 /* Number of registers to save for suspend/resume in terms of their ranges. */
 #define RTSX_NREG ((0XFDAE - 0XFDA0) + (0xFD69 - 0xFD32) + (0xFE34 - 0xFE20))
 
-#ifndef __APPLE__ // TODO: Fix this mess (inherit from this instead of copying?)
+#if __APPLE__ // TODO: Inherit somehow?
+struct rtsx_softc_original {
+#else
 struct rtsx_softc {
+#endif
 	struct device	sc_dev;
 	struct device	*sdmmc;		/* generic SD/MMC device */
 	bus_space_tag_t	iot;		/* host register set tag */
@@ -46,7 +49,6 @@ struct rtsx_softc {
 	u_int8_t	regs[RTSX_NREG];/* host controller state */
 	u_int32_t	regs4[6];	/* host controller state */
 };
-#endif // __APPLE__
 
 /* Host controller functions called by the attachment driver. */
 int	rtsx_attach(struct rtsx_softc *, bus_space_tag_t,

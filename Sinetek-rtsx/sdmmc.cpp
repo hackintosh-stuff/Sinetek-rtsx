@@ -650,7 +650,6 @@ sdmmc_app_command(struct sdmmc_softc *sc, struct sdmmc_command *cmd)
 int
 sdmmc_mmc_command(struct sdmmc_softc *sc, struct sdmmc_command *cmd)
 {
-#ifndef __APPLE__ // FIX
 	int error;
 
 	rw_assert_wrlock(&sc->sc_lock);
@@ -666,9 +665,6 @@ sdmmc_mmc_command(struct sdmmc_softc *sc, struct sdmmc_command *cmd)
 		wakeup(cmd);
 
 	return error;
-#else
-    return 0;
-#endif
 }
 
 /*

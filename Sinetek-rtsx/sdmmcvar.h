@@ -167,7 +167,7 @@ struct sdmmc_function {
 /*
  * Structure describing a single SD/MMC/SDIO card slot.
  */
-#ifdef __APPLE__ // TODO: Inherit somehow?
+#if __APPLE__ // TODO: Inherit somehow?
 struct sdmmc_softc_original {
 #else
 struct sdmmc_softc {
