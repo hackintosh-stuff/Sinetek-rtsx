@@ -2,7 +2,10 @@
 
 #include <stdint.h>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winconsistent-missing-override"
 #include <IOKit/pci/IOPCIDevice.h>
+#pragma clang diagnostic pop
 #include <IOKit/IOInterruptEventSource.h>
 #if RTSX_USE_IOCOMMANDGATE
 #include <IOKit/IOCommandGate.h>
