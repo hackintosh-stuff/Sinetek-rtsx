@@ -27,20 +27,20 @@ __END_DECLS
 //#define splsdmmc(...) UTLsplsdmmc(sc->splsdmmc_rec_lock)
 #define splbio(...) UTLsplsdmmc(sc->splsdmmc_rec_lock)
 inline int UTLsplsdmmc(IORecursiveLock *l) {
-    IORecursiveLockLock(l);
-    /* UTL_DEBUG(2, "Locked splsdmmc_lock"); */
-    return 0;
+	IORecursiveLockLock(l);
+	/* UTL_DEBUG(2, "Locked splsdmmc_lock"); */
+	return 0;
 }
 
 #define splhigh() ({ \
-    /* UTL_DEBUG(2, "Locking splsdmmc_lock"); */ \
-    IORecursiveLockLock(sc->splsdmmc_rec_lock); \
-    0; \
+/* UTL_DEBUG(2, "Locking splsdmmc_lock"); */ \
+IORecursiveLockLock(sc->splsdmmc_rec_lock); \
+0; \
 })
 
 #define splx(n) do { \
-    /* UTL_DEBUG(2, "Unlocking splsdmmc_lock"); */ \
-    IORecursiveLockUnlock(sc->splsdmmc_rec_lock); \
+/* UTL_DEBUG(2, "Unlocking splsdmmc_lock"); */ \
+IORecursiveLockUnlock(sc->splsdmmc_rec_lock); \
 } while (0)
 
 #define INFSLP 0 // -1?
@@ -70,9 +70,9 @@ do { \
 #undef KASSERT
 #define KASSERT(expr) \
 do { \
-    if (!(expr)) { \
-        UTL_ERR("Assertion failed: %s", #expr); \
-    } \
+if (!(expr)) { \
+UTL_ERR("Assertion failed: %s", #expr); \
+} \
 } while (0)
 #endif
 
@@ -95,10 +95,10 @@ do { \
 
 constexpr int cold = 1;
 struct rtsx_proc {
-    struct ps_comm_st {
-        const char *ps_comm;
-    };
-    struct ps_comm_st *p_p;
+	struct ps_comm_st {
+		const char *ps_comm;
+	};
+	struct ps_comm_st *p_p;
 };
 constexpr rtsx_proc *curproc = nullptr;
 #define tsleep(a1, a2, a3, a4) do {} while (0)
@@ -146,28 +146,28 @@ extern int hz;
 #define M_DEVBUF 0 // seems like not defined on macOS
 
 static inline void *malloc(size_t size, int type, int flags) {
-    return _MALLOC(size, type, flags);
+	return _MALLOC(size, type, flags);
 }
 static inline void free(void *addr, int type, int flags) {
-    _FREE(addr, type);
+	_FREE(addr, type);
 }
 // check if they are microseconds or milliseconds!
 static inline void delay(unsigned int microseconds) {
-    IODelay(microseconds);
+	IODelay(microseconds);
 }
 
 #undef READ4
 #define READ4(sc, reg) \
 ({ \
-    uint32_t val; \
-    sc->memory_descriptor_->readBytes(reg, &val, 4); \
-    val; \
+uint32_t val; \
+sc->memory_descriptor_->readBytes(reg, &val, 4); \
+val; \
 })
 #undef WRITE4
 #define WRITE4(sc, reg, val) \
 do { \
-    uint32_t _val = val; \
-    sc->memory_descriptor_->writeBytes(reg, &_val, 4); \
+uint32_t _val = val; \
+sc->memory_descriptor_->writeBytes(reg, &_val, 4); \
 } while (0)
 
 #define RTSX_F_525A          0x20

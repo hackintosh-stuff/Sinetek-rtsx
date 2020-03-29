@@ -30,9 +30,9 @@ bool SDDisk::init(struct sdmmc_softc *sc_sdmmc, OSDictionary* properties)
 	UTL_DEBUG(0, "START");
 	if (super::init(properties) == false)
 		return false;
-	
+
 	util_lock_ = nullptr;
-	
+
 	UTL_DEBUG(0, "END");
 	return true;
 }
@@ -42,45 +42,45 @@ bool SDDisk::attach(IOService* provider)
 	UTL_LOG("SDDisk attaching...");
 	if (super::attach(provider) == false)
 		return false;
-	
+
 	provider_ = OSDynamicCast(rtsx_softc, provider);
 	if (provider_ == NULL)
 		return false;
-	
+
 	provider_->retain();
-	
+
 	num_blocks_ = provider_->sc_fn0->csd.capacity;
 	blk_size_   = provider_->sc_fn0->csd.sector_size;
 	util_lock_ = IOLockAlloc();
 
 	printf("rtsx: attaching SDDisk, num_blocks:%d  blk_size:%d\n",
 	       num_blocks_, blk_size_);
-	
-    UTL_LOG("SDDisk attached.");
+
+	UTL_LOG("SDDisk attached.");
 	return true;
 }
 
 void SDDisk::detach(IOService* provider)
 {
-    UTL_LOG("SDDisk detaching...");
+	UTL_LOG("SDDisk detaching...");
 	IOLockFree(util_lock_);
 	util_lock_ = NULL;
 	provider_->release();
 	provider_ = NULL;
-	
+
 	super::detach(provider);
-    UTL_LOG("SDDisk detached.");
+	UTL_LOG("SDDisk detached.");
 }
 
 IOReturn SDDisk::doEjectMedia(void)
 {
-    void rtsx_card_eject(struct rtsx_softc *);
+	void rtsx_card_eject(struct rtsx_softc *);
 	UTL_DEBUG(0, "START");
-    IOLog("%s: RAMDISK: doEjectMedia.", __func__);
-	
+	IOLog("%s: RAMDISK: doEjectMedia.", __func__);
+
 	// XXX signal intent further down the stack?
-    // syscl - implement eject routine here
-    rtsx_card_eject(provider_);
+	// syscl - implement eject routine here
+	rtsx_card_eject(provider_);
 	UTL_DEBUG(0, "END");
 	return kIOReturnSuccess;
 }
@@ -93,8 +93,8 @@ IOReturn SDDisk::doFormatMedia(UInt64 byteCapacity)
 
 UInt32 SDDisk::GetBlockCount() const
 {
-    UTL_DEBUG(0, "START");
-    return num_blocks_;
+	UTL_DEBUG(0, "START");
+	return num_blocks_;
 }
 
 UInt32 SDDisk::doGetFormatCapacities(UInt64* capacities, UInt32 capacitiesMaxCount) const
@@ -103,13 +103,13 @@ UInt32 SDDisk::doGetFormatCapacities(UInt64* capacities, UInt32 capacitiesMaxCou
 	// Ensure that the array is sufficient to hold all our formats (we require 1 element).
 	if ((capacities != NULL) && (capacitiesMaxCount < 1))
 		return 0;               // Error, return an array size of 0.
-	
+
 	/*
 	 * We need to run circles around the const-ness of this function.
 	 */
-//	auto blockCount = const_cast<SDDisk *>(this)->getBlockCount();
-    auto blockCount = GetBlockCount();
-	
+	//	auto blockCount = const_cast<SDDisk *>(this)->getBlockCount();
+	auto blockCount = GetBlockCount();
+
 	// The caller may provide a NULL array if it wishes to query the number of formats that we support.
 	if (capacities != NULL)
 		capacities[0] = blockCount * blk_size_;
@@ -130,34 +130,34 @@ IOReturn SDDisk::doSynchronizeCache(void)
 
 char* SDDisk::getVendorString(void)
 {
-    UTL_DEBUG(0, "START");
-    // syscl - safely converted to char * use const_static due
-    // to ISO C++11 does not allow conversion from string literal to 'char *'
-    return const_cast<char *>("Realtek");
+	UTL_DEBUG(0, "START");
+	// syscl - safely converted to char * use const_static due
+	// to ISO C++11 does not allow conversion from string literal to 'char *'
+	return const_cast<char *>("Realtek");
 }
 
 char* SDDisk::getProductString(void)
 {
-    UTL_DEBUG(0, "START");
-    // syscl - safely converted to char * use const_static due
-    // to ISO C++11 does not allow conversion from string literal to 'char *'
-    return const_cast<char *>("SD Card Reader");
+	UTL_DEBUG(0, "START");
+	// syscl - safely converted to char * use const_static due
+	// to ISO C++11 does not allow conversion from string literal to 'char *'
+	return const_cast<char *>("SD Card Reader");
 }
 
 char* SDDisk::getRevisionString(void)
 {
-    UTL_DEBUG(0, "START");
-    // syscl - safely converted to char * use const_static due
-    // to ISO C++11 does not allow conversion from string literal to 'char *'
-    return const_cast<char *>("1.0");
+	UTL_DEBUG(0, "START");
+	// syscl - safely converted to char * use const_static due
+	// to ISO C++11 does not allow conversion from string literal to 'char *'
+	return const_cast<char *>("1.0");
 }
 
 char* SDDisk::getAdditionalDeviceInfoString(void)
 {
-    UTL_DEBUG(0, "START");
-    // syscl - safely converted to char * use const_static due
-    // to ISO C++11 does not allow conversion from string literal to 'char *''
-    return const_cast<char *>("1.0");
+	UTL_DEBUG(0, "START");
+	// syscl - safely converted to char * use const_static due
+	// to ISO C++11 does not allow conversion from string literal to 'char *''
+	return const_cast<char *>("1.0");
 }
 
 IOReturn SDDisk::reportBlockSize(UInt64 *blockSize)
@@ -172,17 +172,17 @@ IOReturn SDDisk::reportBlockSize(UInt64 *blockSize)
 
 IOReturn SDDisk::reportEjectability(bool *isEjectable)
 {
-    UTL_DEBUG(0, "START");
-    *isEjectable = true; // syscl - should be true
-    return kIOReturnSuccess;
+	UTL_DEBUG(0, "START");
+	*isEjectable = true; // syscl - should be true
+	return kIOReturnSuccess;
 }
 
 /* syscl - deprecated
-IOReturn SDDisk::reportLockability(bool *isLockable)
-{
-	*isLockable = false;
-	return kIOReturnSuccess;
-}*/
+ IOReturn SDDisk::reportLockability(bool *isLockable)
+ {
+ *isLockable = false;
+ return kIOReturnSuccess;
+ }*/
 
 IOReturn SDDisk::reportMaxValidBlock(UInt64 *maxBlock)
 {
@@ -196,7 +196,7 @@ IOReturn SDDisk::reportMediaState(bool *mediaPresent, bool *changedState)
 	UTL_DEBUG(0, "START");
 	*mediaPresent = true;
 	*changedState = false;
-	
+
 	return kIOReturnSuccess;
 }
 
@@ -253,7 +253,7 @@ void read_task_impl_(void *_args)
 	BioArgs *args = (BioArgs *) _args;
 	IOByteCount actualByteCount;
 	int error = 0;
-	
+
 	UTL_CHK_PTR(args,);
 	UTL_CHK_PTR(args->buffer,);
 	UTL_CHK_PTR(args->that,);
@@ -263,30 +263,30 @@ void read_task_impl_(void *_args)
 		  static_cast<unsigned>(args->block),
 		  static_cast<unsigned>(args->nblks),
 		  args->that->blk_size_);
-	
+
 	printf("read_task_impl_  sz %llu\n", args->nblks * args->that->blk_size_);
 	printf("sf->csd.sector_size %d\n", args->that->provider_->sc_fn0->csd.sector_size);
-	
-	
+
+
 	actualByteCount = args->nblks * args->that->blk_size_;
 #if RTSX_USE_WRITEBYTES
 	u_char buf[512];
 #else
-    { auto map = args->buffer->map();
-	// this is for 32-bit?? u_char * buf = (u_char *) map->getVirtualAddress();
-    u_char *buf = (u_char *) map->getAddress();
-	
-	for (UInt64 b = 0; b < args->nblks; ++b)
-	{
-//		sdmmc_mem_single_read_block(args->that->provider_->sc_fn0,
-//						    0, buf + b * 512, 512);
-		sdmmc_mem_read_block_subr(args->that->provider_->sc_fn0,
-					  0, buf, 512);
-//		sdmmc_go_idle_state(args->that->provider_);
-	}
-    map->release(); } // need to release map
+	{ auto map = args->buffer->map();
+		// this is for 32-bit?? u_char * buf = (u_char *) map->getVirtualAddress();
+		u_char *buf = (u_char *) map->getAddress();
+
+		for (UInt64 b = 0; b < args->nblks; ++b)
+		{
+			//		sdmmc_mem_single_read_block(args->that->provider_->sc_fn0,
+			//						    0, buf + b * 512, 512);
+			sdmmc_mem_read_block_subr(args->that->provider_->sc_fn0,
+						  0, buf, 512);
+			//		sdmmc_go_idle_state(args->that->provider_);
+		}
+		map->release(); } // need to release map
 #endif
-		
+
 	for (UInt64 b = 0; b < args->nblks; b++)
 	{
 		printf("would: %lld  last block %d\n", args->block + b, args->that->num_blocks_ - 1);
@@ -294,43 +294,43 @@ void read_task_impl_(void *_args)
 #if RTSX_USE_WRITEBYTES
 		// This is a safer version
 		error = sdmmc_mem_read_block(args->that->provider_->sc_fn0,
-                                     static_cast<int>(args->block + b),
-                                     buf, 512);
+					     static_cast<int>(args->block + b),
+					     buf, 512);
 		if (!error) {
 			args->buffer->writeBytes(b * 512, buf, 512);
 		} else {
 			UTL_ERR("ERROR READING BLOCK (blockNo=%d error=%d)", static_cast<int>(args->block + b), error);
 		}
 #else
-        auto would = args->block + b;
+		auto would = args->block + b;
 		//if ( would > 60751872 ) would = 60751871;
 		error = sdmmc_mem_read_block_subr(args->that->provider_->sc_fn0,
-				static_cast<int>(would), buf + b * 512, 512);
+						  static_cast<int>(would), buf + b * 512, 512);
 #endif
 		if (error) {
 			if (args->completion.action) {
 				(args->completion.action)(args->completion.target, args->completion.parameter,
-					kIOReturnIOError, 0);
+							  kIOReturnIOError, 0);
 			} else {
 				UTL_ERR("No completion action!");
 			}
 			goto out;
 		}
 	}
-	
+
 	if (args->completion.action) {
 		(args->completion.action)(args->completion.target, args->completion.parameter,
-			kIOReturnSuccess, actualByteCount);
+					  kIOReturnSuccess, actualByteCount);
 	} else {
 		UTL_ERR("No completion action!");
 	}
-	
+
 out:
-    if (error) {
-        UTL_ERR("END (error = %d)", error);
-    } else {
-        UTL_DEBUG(0, "END (error = %d)", error);
-    }
+	if (error) {
+		UTL_ERR("END (error = %d)", error);
+	} else {
+		UTL_DEBUG(0, "END (error = %d)", error);
+	}
 	delete args;
 }
 
@@ -356,24 +356,24 @@ IOReturn SDDisk::doAsyncReadWrite(IOMemoryDescriptor *buffer,
 				  IOStorageCompletion *completion)
 {
 	IODirection		direction;
-	
+
 	// Return errors for incoming I/O if we have been terminated
 	if (isInactive() != false)
 		return kIOReturnNotAttached;
-	
+
 	direction = buffer->getDirection();
 	if ((direction != kIODirectionIn) && (direction != kIODirectionOut))
 		return kIOReturnBadArgument;
-	
+
 	if (direction == kIODirectionOut)
 		return kIOReturnNotWritable; // read-only driver for now...
-	
+
 	if ((block + nblks) > num_blocks_)
 		return kIOReturnBadArgument;
-	
+
 	if ((direction != kIODirectionIn) && (direction != kIODirectionOut))
 		return kIOReturnBadArgument;
-	
+
 	// printf("=====================================================\n");
 	UTL_DEBUG(0, "START (block=%d nblks=%d)", (int) block, (int) nblks);
 	IOLockLock(util_lock_);
@@ -392,21 +392,21 @@ IOReturn SDDisk::doAsyncReadWrite(IOMemoryDescriptor *buffer,
 	if (completion != nullptr)
 		bioargs->completion = *completion;
 	bioargs->that = this;
-	
+
 #if RTSX_FIX_TASK_BUG
-    UTL_DEBUG(0, "Allocating read task...");
-    auto newTask = UTL_MALLOC(sdmmc_task); // will be deleted after processed
-    if (!newTask) return kIOReturnNoMemory;
-    sdmmc_init_task(newTask, read_task_impl_, bioargs);
-    sdmmc_add_task(provider_, newTask);
+	UTL_DEBUG(0, "Allocating read task...");
+	auto newTask = UTL_MALLOC(sdmmc_task); // will be deleted after processed
+	if (!newTask) return kIOReturnNoMemory;
+	sdmmc_init_task(newTask, read_task_impl_, bioargs);
+	sdmmc_add_task(provider_, newTask);
 #else
 	sdmmc_init_task(&provider_->read_task_, read_task_impl_, bioargs);
 	sdmmc_add_task(provider_, &provider_->read_task_);
 #endif
-	
+
 	IOLockUnlock(util_lock_);
 	// printf("=====================================================\n");
-	
+
 	UTL_DEBUG(0, "RETURNING SUCCESS");
 	return kIOReturnSuccess;
 }
@@ -414,19 +414,19 @@ IOReturn SDDisk::doAsyncReadWrite(IOMemoryDescriptor *buffer,
 #if 0
 int mhc_count = 0;
 void SDDisk::taggedRetain(const void * tag) const {
-    if (tag) {
-        UTL_DEBUG(0, "                          Retain! (0x%08x) (%d) (%d -> %d)",
-                  (unsigned) reinterpret_cast<int64_t>(tag), getRetainCount(), mhc_count, mhc_count + 1);
-        mhc_count++;
-    }
-    super::taggedRetain(tag);
+	if (tag) {
+		UTL_DEBUG(0, "                          Retain! (0x%08x) (%d) (%d -> %d)",
+			  (unsigned) reinterpret_cast<int64_t>(tag), getRetainCount(), mhc_count, mhc_count + 1);
+		mhc_count++;
+	}
+	super::taggedRetain(tag);
 }
 void SDDisk::taggedRelease(const void * tag, const int when) const {
-    super::taggedRelease(tag, when);
-    if (tag) {
-        mhc_count--;
-        UTL_DEBUG(0, "                          Release! (0x%08x) (%d) (%d -> %d)",
-                  (unsigned) reinterpret_cast<int64_t>(tag), getRetainCount(), mhc_count + 1, mhc_count);
-    }
+	super::taggedRelease(tag, when);
+	if (tag) {
+		mhc_count--;
+		UTL_DEBUG(0, "                          Release! (0x%08x) (%d) (%d -> %d)",
+			  (unsigned) reinterpret_cast<int64_t>(tag), getRetainCount(), mhc_count + 1, mhc_count);
+	}
 }
 #endif // DEBUG

@@ -27,24 +27,24 @@ struct rtsx_softc : public IOService
 {
 
 	OSDeclareDefaultStructors(rtsx_softc);
-    
+
 public:
-    
+
 	virtual bool start(IOService * provider) override;
 	virtual void stop(IOService * provider) override;
-    
+
 	void rtsx_pci_attach();
 	void rtsx_pci_detach();
-    /* syscl - Power Management Support */
-    virtual IOReturn setPowerState(unsigned long powerStateOrdinal, IOService * policyMaker) override;
-	
+	/* syscl - Power Management Support */
+	virtual IOReturn setPowerState(unsigned long powerStateOrdinal, IOService * policyMaker) override;
+
 	void blk_attach();
 	void blk_detach();
-	
+
 #if RTSX_USE_IOFIES
 	static bool is_my_interrupt(OSObject *arg, IOFilterInterruptEventSource *source);
 #endif // RTSX_USE_IOFIES
-    
+
 	// ** //
 	IOPCIDevice *		provider_;
 	IOWorkLoop *		workloop_;
@@ -55,36 +55,36 @@ public:
 #if RTSX_USE_IOCOMMANDGATE
 	void executeOneAsCommand();
 	static int executeOneCommandGateAction(
-		OSObject *sc,
-		void *newRequest,
-		void *, void *, void * );
+					       OSObject *sc,
+					       void *newRequest,
+					       void *, void *, void * );
 #endif
 #else // RTSX_USE_IOFIES
 	IOInterruptEventSource *intr_source_;
 #endif // RTSX_USE_IOFIES
-	
+
 	SDDisk *			sddisk_;
 #if !RTSX_FIX_TASK_BUG
-    // This is not needed, since we will dynamically allocate read tasks
+	// This is not needed, since we will dynamically allocate read tasks
 	struct sdmmc_task	read_task_;
 #endif
-	
+
 	/*
 	 * rtsx_softc variables.
 	 */
 	int		flags;
 #if RTSX_USE_IOLOCK
-    IOLock *          intr_status_lock;
-    IORecursiveLock * splsdmmc_rec_lock;
-    bool              intr_status_event;
+	IOLock *          intr_status_lock;
+	IORecursiveLock * splsdmmc_rec_lock;
+	bool              intr_status_event;
 #endif
 	uint32_t		intr_status;
 	u_int8_t		regs[RTSX_NREG];/* host controller state */
 	u_int32_t	regs4[6];	/* host controller state */
-    // IOBufferMemoryDescriptor * dmap_cmd, *dmap_data;
-    bus_dmamap_t dmap_cmd, dmap_data;
-	
-	
+	// IOBufferMemoryDescriptor * dmap_cmd, *dmap_data;
+	bus_dmamap_t dmap_cmd, dmap_data;
+
+
 #if RTSX_USE_IOCOMMANDGATE
 	IOCommandGate *		task_command_gate_;
 #else
@@ -98,12 +98,12 @@ public:
 	void			prepare_task_loop();
 	void			destroy_task_loop();
 	static void		task_execute_one_impl_(OSObject *, IOTimerEventSource *);
-	
+
 	/*
 	 * sdmmc_softc variables.
 	 */
 #define SDMMC_MAXNSEGS	((MAXPHYS / PAGE_SIZE) + 1)
-	
+
 	int sc_flags;
 #define SMF_SD_MODE		0x0001	/* host in SD mode (MMC otherwise) */
 #define SMF_IO_MODE		0x0002	/* host in I/O mode (SD mode only) */
@@ -112,7 +112,7 @@ public:
 #define SMF_CARD_ATTACHED	0x0020	/* card driver(s) attached */
 #define	SMF_STOP_AFTER_MULTIPLE	0x0040	/* send a stop after a multiple cmd */
 #define SMF_CONFIG_PENDING	0x0080	/* config_pending_incr() called */
-	
+
 	uint32_t sc_caps;		/* host capability */
 #define SMC_CAPS_AUTO_STOP	0x0001	/* send CMD12 automagically by host */
 #define SMC_CAPS_4BIT_MODE	0x0002	/* 4-bits data bus width */
@@ -131,7 +131,7 @@ public:
 #define SMC_CAPS_MMC_DDR52	0x2000  /* eMMC DDR52 timing */
 #define SMC_CAPS_MMC_HS200	0x4000	/* eMMC HS200 timing */
 #define SMC_CAPS_MMC_HS400	0x8000	/* eMMC HS400 timing */
-	
+
 	int sc_function_count;		/* number of I/O functions (SDIO) */
 	struct sdmmc_function *sc_card;	/* selected card */
 	struct sdmmc_function *sc_fn0;	/* function 0, the card itself */
@@ -146,21 +146,21 @@ public:
 	TAILQ_HEAD(, sdmmc_intr_handler) sc_intrq; /* interrupt handlers */
 	long sc_max_xfer;		/* maximum transfer size */
 
-    
-    
-    
-    
-    // added just to prevent errorss...
-    sdmmc_chip_functions   *sct;
-    sdmmc_chipset_handle_t  sch;
-    bus_dmamap_t            sc_dmap;
-    bus_dma_tag_t           sc_dmat;
-    bus_dma_tag_t           dmat;
-    caddr_t                 admabuf;
-    bus_dmamap_t            dmap_adma;
-    bus_dma_segment_t      *adma_segs;
-    struct device          *sdmmc;
-    struct device           sc_dev; // parent?
-    long sc_max_seg;
-    void *sc_cookies[SDMMC_MAX_FUNCTIONS];
+
+
+
+
+	// added just to prevent errorss...
+	sdmmc_chip_functions   *sct;
+	sdmmc_chipset_handle_t  sch;
+	bus_dmamap_t            sc_dmap;
+	bus_dma_tag_t           sc_dmat;
+	bus_dma_tag_t           dmat;
+	caddr_t                 admabuf;
+	bus_dmamap_t            dmap_adma;
+	bus_dma_segment_t      *adma_segs;
+	struct device          *sdmmc;
+	struct device           sc_dev; // parent?
+	long sc_max_seg;
+	void *sc_cookies[SDMMC_MAX_FUNCTIONS];
 };

@@ -81,7 +81,10 @@
 				9E9EEDAA1E4C65AD00E640DB /* Sinetek-rtsx */,
 				9E9EEDA91E4C65AD00E640DB /* Products */,
 			);
+			indentWidth = 8;
 			sourceTree = "<group>";
+			tabWidth = 8;
+			usesTabs = 1;
 		};
 		9E9EEDA91E4C65AD00E640DB /* Products */ = {
 			isa = PBXGroup;

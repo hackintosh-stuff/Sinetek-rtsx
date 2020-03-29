@@ -40,7 +40,7 @@ extern bus_dma_tag_t      gBusDmaTag;
 /// Allocate and initialize a DMA handle
 int
 bus_dmamap_create(bus_dma_tag_t tag, bus_size_t size, int nsegments, bus_size_t maxsegsz,
-                  bus_size_t boundary, int flags, bus_dmamap_t *dmamp);
+		  bus_size_t boundary, int flags, bus_dmamap_t *dmamp);
 
 /// Free all resources associated with a given DMA handle
 void
@@ -63,7 +63,7 @@ bus_dmamap_sync(bus_dma_tag_t tag, bus_dmamap_t dmam, bus_addr_t offset, bus_siz
 /// bus_dmamem_free().
 int
 bus_dmamem_alloc(bus_dma_tag_t tag, bus_size_t size, bus_size_t alignment, bus_size_t boundary, bus_dma_segment_t *segs,
-                 int nsegs, int *rsegs, int flags);
+		 int nsegs, int *rsegs, int flags);
 
 /// Free memory previously allocated by bus_dmamem_alloc(), invalidating any mapping
 void
