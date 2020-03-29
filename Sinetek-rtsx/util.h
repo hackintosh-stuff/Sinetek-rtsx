@@ -26,7 +26,7 @@
 })
 
 #if DEBUG
-//#define UTL_DEBUG_LEVEL 2
+#define UTL_DEBUG_LEVEL 3
 #ifndef UTL_DEBUG_LEVEL
 #	define UTL_DEBUG_LEVEL 1 // only 0-level messages
 #endif
@@ -34,7 +34,7 @@
 do { \
 	if (lvl < UTL_DEBUG_LEVEL) { \
 		os_log(OS_LOG_DEFAULT, "rtsx: %12s%-22s: " fmt "\n", UTL_THIS_CLASS, __func__, ##__VA_ARGS__); \
-		IOSleep(50); /* Wait for log to appear... */ \
+		IOSleep(5000); /* Wait for log to appear... */ \
 	} \
 } while (0)
 #else // DEBUG
@@ -89,10 +89,7 @@ do { \
 } while (0)
 #else // RTSX_USE_IOMALLOC
 #define UTL_MALLOC(TYPE) new TYPE
-#define UTL_FREE(ptr, TYPE) do { \
-    delete ptr; \
-    ptr = nullptr; \
-} while (0)
+#define UTL_FREE(ptr, TYPE) delete ptr
 #endif // RTSX_USE_IOMALLOC
 
 static inline AbsoluteTime timo2AbsoluteTimeDeadline(int timo) {

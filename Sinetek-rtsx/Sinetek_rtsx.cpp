@@ -15,13 +15,9 @@ OSDefineMetaClassAndStructors(rtsx_softc, super);
 #include "rtsxvar.h"
 #include "SDDisk.hpp"
 
+#undef UTL_THIS_CLASS
 #define UTL_THIS_CLASS "rtsx_softc::"
 #include "util.h"
-
-// use the ones in rtsx.cpp (they are not declared static)
-uint32_t READ4(rtsx_softc *sc, uint32_t reg);
-void WRITE4(rtsx_softc *sc, uint32_t reg, uint32_t val);
-
 
 //
 // syscl - define & enumerate power states
@@ -158,13 +154,15 @@ void rtsx_softc::rtsx_pci_attach()
         case PCI_PRODUCT_REALTEK_RTS525A:
             /* syscl - RTS525A */
             flags = RTSX_F_525A;
+            bar = RTSX_PCI_BAR_525A;
             break;
         default:
             flags = 0;
             break;
     }
 	
-	int error = rtsx_attach(this);
+    int error = rtsx_attach(this, gBusSpaceTag, gBusSpaceHandle,
+                            0/* ignored */, gBusDmaTag, flags);
 	if (!error)
 	{
 //		pci_present_and_attached_ = true;
@@ -196,13 +194,13 @@ IOReturn rtsx_softc::setPowerState(unsigned long powerStateOrdinal, IOService *p
     if (powerStateOrdinal)
     {
         IOLog("%s::setPowerState: Wake from sleep\n", __func__);
-        rtsx_activate(this, 1);
+//        rtsx_activate(this, 1);
         goto done;
     }
     else
     {
         IOLog("%s::setPowerState: Sleep the card\n", __func__);
-        rtsx_activate(this, 0);
+//        rtsx_activate(this, 0);
         goto done;
     }
 

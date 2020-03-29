@@ -2,14 +2,14 @@
 #include <IOKit/storage/IOBlockStorageDevice.h>
 #include <IOKit/IOMemoryDescriptor.h>
 
+#define UTL_THIS_CLASS "SDDisk::"
+
 #include "SDDisk.hpp"
 #include "Sinetek_rtsx.hpp"
-#include "sdmmcvar.h"
+#include "sdmmcvar.h" // sdmmc_mem_read_block
 #include "device.h"
 
-#define UTL_THIS_CLASS "SDDisk::"
 #include "util.h"
-#define printf(...) do {} while (0) /* disable exessive logging */
 
 // Define the superclass
 #define super IOBlockStorageDevice
@@ -74,6 +74,7 @@ void SDDisk::detach(IOService* provider)
 
 IOReturn SDDisk::doEjectMedia(void)
 {
+    void rtsx_card_eject(struct rtsx_softc *);
 	UTL_DEBUG(0, "START");
     IOLog("%s: RAMDISK: doEjectMedia.", __func__);
 	
@@ -245,22 +246,6 @@ struct BioArgs
 	SDDisk *that;
 };
 
-// move me
-int
-sdmmc_mem_read_block(struct sdmmc_function *sf, int blkno, u_char *data,
-		     size_t datalen);
-int
-sdmmc_mem_single_read_block(struct sdmmc_function *sf, int blkno, u_char *data,
-			    size_t datalen);
-void
-sdmmc_add_task(struct sdmmc_softc *sc, struct sdmmc_task *task);
-void
-sdmmc_go_idle_state(struct sdmmc_softc *sc);
-int
-sdmmc_mem_read_block_subr(struct sdmmc_function *sf,
-			  int blkno, u_char *data, size_t datalen);
-
-
 // cholonam: This task is put on a queue which is run by sc::task_execute_one_ (originally using a timer, now trying to
 // change to an IOCommandGate.
 void read_task_impl_(void *_args)
@@ -308,9 +293,9 @@ void read_task_impl_(void *_args)
 		//unsigned int would = args->block + b;
 #if RTSX_USE_WRITEBYTES
 		// This is a safer version
-		error = sdmmc_mem_read_block_subr(args->that->provider_->sc_fn0,
-						  static_cast<int>(args->block + b),
-						  buf, 512);
+		error = sdmmc_mem_read_block(args->that->provider_->sc_fn0,
+                                     static_cast<int>(args->block + b),
+                                     buf, 512);
 		if (!error) {
 			args->buffer->writeBytes(b * 512, buf, 512);
 		} else {
@@ -425,3 +410,23 @@ IOReturn SDDisk::doAsyncReadWrite(IOMemoryDescriptor *buffer,
 	UTL_DEBUG(0, "RETURNING SUCCESS");
 	return kIOReturnSuccess;
 }
+
+#if 0
+int mhc_count = 0;
+void SDDisk::taggedRetain(const void * tag) const {
+    if (tag) {
+        UTL_DEBUG(0, "                          Retain! (0x%08x) (%d) (%d -> %d)",
+                  (unsigned) reinterpret_cast<int64_t>(tag), getRetainCount(), mhc_count, mhc_count + 1);
+        mhc_count++;
+    }
+    super::taggedRetain(tag);
+}
+void SDDisk::taggedRelease(const void * tag, const int when) const {
+    super::taggedRelease(tag, when);
+    if (tag) {
+        mhc_count--;
+        UTL_DEBUG(0, "                          Release! (0x%08x) (%d) (%d -> %d)",
+                  (unsigned) reinterpret_cast<int64_t>(tag), getRetainCount(), mhc_count + 1, mhc_count);
+    }
+}
+#endif // DEBUG

@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		9319F48F243081B600A4921E /* openbsd_compat_types.h in Headers */ = {isa = PBXBuildFile; fileRef = 9319F48B243081B600A4921E /* openbsd_compat_types.h */; };
+		9319F490243081B600A4921E /* openbsd_compat_dma.h in Headers */ = {isa = PBXBuildFile; fileRef = 9319F48C243081B600A4921E /* openbsd_compat_dma.h */; };
+		9319F491243081B600A4921E /* openbsd_compat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9319F48D243081B600A4921E /* openbsd_compat.cpp */; };
+		9319F492243081B600A4921E /* openbsd_compat_dma.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9319F48E243081B600A4921E /* openbsd_compat_dma.cpp */; };
 		9E11DE591E4CB19C00AF36C8 /* SDDisk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9E11DE571E4CB19C00AF36C8 /* SDDisk.cpp */; };
 		9E11DE5A1E4CB19C00AF36C8 /* SDDisk.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 9E11DE581E4CB19C00AF36C8 /* SDDisk.hpp */; };
 		9E9EEDAC1E4C65AD00E640DB /* Sinetek_rtsx.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 9E9EEDAB1E4C65AD00E640DB /* Sinetek_rtsx.hpp */; };
@@ -19,6 +23,10 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		9319F48B243081B600A4921E /* openbsd_compat_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = openbsd_compat_types.h; sourceTree = "<group>"; };
+		9319F48C243081B600A4921E /* openbsd_compat_dma.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = openbsd_compat_dma.h; sourceTree = "<group>"; };
+		9319F48D243081B600A4921E /* openbsd_compat.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = openbsd_compat.cpp; sourceTree = "<group>"; };
+		9319F48E243081B600A4921E /* openbsd_compat_dma.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = openbsd_compat_dma.cpp; sourceTree = "<group>"; };
 		9355866F242211D600B8B0B9 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = "<none>"; };
 		93576F8524263CF3006F1A33 /* openbsd_compat.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = openbsd_compat.h; sourceTree = "<group>"; };
 		935884C92421D21500E781A7 /* util.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = util.h; sourceTree = "<group>"; };
@@ -57,6 +65,10 @@
 		93576F8424263CC8006F1A33 /* openbsd */ = {
 			isa = PBXGroup;
 			children = (
+				9319F48E243081B600A4921E /* openbsd_compat_dma.cpp */,
+				9319F48C243081B600A4921E /* openbsd_compat_dma.h */,
+				9319F48B243081B600A4921E /* openbsd_compat_types.h */,
+				9319F48D243081B600A4921E /* openbsd_compat.cpp */,
 				93576F8524263CF3006F1A33 /* openbsd_compat.h */,
 			);
 			path = openbsd;
@@ -113,6 +125,8 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9319F48F243081B600A4921E /* openbsd_compat_types.h in Headers */,
+				9319F490243081B600A4921E /* openbsd_compat_dma.h in Headers */,
 				9E11DE5A1E4CB19C00AF36C8 /* SDDisk.hpp in Headers */,
 				9E9EEDAC1E4C65AD00E640DB /* Sinetek_rtsx.hpp in Headers */,
 			);
@@ -188,9 +202,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				9E9EEDC11E4C89FA00E640DB /* sdmmc_io.cpp in Sources */,
+				9319F491243081B600A4921E /* openbsd_compat.cpp in Sources */,
 				9E11DE591E4CB19C00AF36C8 /* SDDisk.cpp in Sources */,
 				9E9EEDBE1E4C869F00E640DB /* sdmmc_cis.cpp in Sources */,
 				9E9EEDC31E4C927D00E640DB /* sdmmc_mem.cpp in Sources */,
+				9319F492243081B600A4921E /* openbsd_compat_dma.cpp in Sources */,
 				9E9EEDB81E4C6EC100E640DB /* rtsx.cpp in Sources */,
 				9E9EEDC51E4C98AC00E640DB /* sdmmc.cpp in Sources */,
 				9E9EEDAE1E4C65AD00E640DB /* Sinetek_rtsx.cpp in Sources */,

@@ -48,4 +48,8 @@ public:
 	virtual IOReturn	setWriteCacheState(bool enabled) override;
 	virtual IOReturn	doAsyncReadWrite(IOMemoryDescriptor *buffer, UInt64 block, UInt64 nblks, IOStorageAttributes *attributes, IOStorageCompletion *completion) override;
 	
+#if 0
+    virtual void taggedRetain(const void * tag) const override;
+    virtual void taggedRelease(const void * tag, const int when) const override;
+#endif
 };

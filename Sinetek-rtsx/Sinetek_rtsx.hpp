@@ -78,7 +78,8 @@ public:
 	uint32_t		intr_status;
 	u_int8_t		regs[RTSX_NREG];/* host controller state */
 	u_int32_t	regs4[6];	/* host controller state */
-	IOBufferMemoryDescriptor * dmap_cmd, *dmap_data;
+    // IOBufferMemoryDescriptor * dmap_cmd, *dmap_data;
+    bus_dmamap_t dmap_cmd, dmap_data;
 	
 	
 #if RTSX_USE_IOCOMMANDGATE
@@ -142,4 +143,19 @@ public:
 	TAILQ_HEAD(, sdmmc_intr_handler) sc_intrq; /* interrupt handlers */
 	long sc_max_xfer;		/* maximum transfer size */
 
+    
+    
+    
+    
+    // added just to prevent errorss...
+    sdmmc_chip_functions   *sct;
+    sdmmc_chipset_handle_t  sch;
+    bus_dmamap_t            sc_dmap;
+    bus_dma_tag_t           sc_dmat;
+    bus_dma_tag_t           dmat;
+    caddr_t                 admabuf;
+    bus_dmamap_t            dmap_adma;
+    bus_dma_segment_t      *adma_segs;
+    struct device          *sdmmc;
+    struct device           sc_dev; // parent?
 };

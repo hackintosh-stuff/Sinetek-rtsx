@@ -18,11 +18,16 @@
 
 /* Routines to decode the Card Information Structure of SD I/O cards */
 
-#ifdef __APPLE__
+#if __APPLE__
 #include "openbsd/openbsd_compat.h"
 #else
 #include <sys/param.h>
+#include <sys/device.h>
 #include <sys/systm.h>
+
+#include <dev/sdmmc/sdmmc_ioreg.h>
+#include <dev/sdmmc/sdmmcdevs.h>
+#include <dev/sdmmc/sdmmcvar.h>
 #endif // __APPLE__
 
 u_int32_t sdmmc_cisptr(struct sdmmc_function *);
@@ -39,12 +44,14 @@ sdmmc_cisptr(struct sdmmc_function *sf)
 	struct sdmmc_function *sf0 = sf->sc->sc_fn0;
 	u_int32_t cisptr = 0;
 	int reg;
-	
+
+	rw_assert_wrlock(&sf->sc->sc_lock);
+
 	reg = SD_IO_CCCR_CISPTR + (sf->number * SD_IO_CCCR_SIZE);
 	cisptr |= sdmmc_io_read_1(sf0, reg + 0) << 0;
 	cisptr |= sdmmc_io_read_1(sf0, reg + 1) << 8;
 	cisptr |= sdmmc_io_read_1(sf0, reg + 2) << 16;
-	
+
 	return cisptr;
 }
 
@@ -55,65 +62,67 @@ sdmmc_read_cis(struct sdmmc_function *sf, struct sdmmc_cis *cis)
 	int reg;
 	u_int8_t tplcode;
 	u_int8_t tpllen;
-	
+
+	rw_assert_wrlock(&sf->sc->sc_lock);
+
 	reg = (int)sdmmc_cisptr(sf);
 	if (reg < SD_IO_CIS_START ||
 	    reg >= (SD_IO_CIS_START+SD_IO_CIS_SIZE-16)) {
 		printf("%s: bad CIS ptr %#x\n", DEVNAME(sf->sc), reg);
 		return 1;
 	}
-	
+
 	for (;;) {
 		tplcode = sdmmc_io_read_1(sf0, reg++);
 		if (tplcode == SD_IO_CISTPL_END)
 			break;
 		if (tplcode == SD_IO_CISTPL_NULL)
 			continue;
-		
+
 		tpllen = sdmmc_io_read_1(sf0, reg++);
 		if (tpllen == 0) {
 			printf("%s: CIS parse error at %d, "
-			       "tuple code %#x, length %d\n",
-			       DEVNAME(sf->sc), reg, tplcode, tpllen);
+			    "tuple code %#x, length %d\n",
+			    DEVNAME(sf->sc), reg, tplcode, tpllen);
 			break;
 		}
-		
+
 		switch (tplcode) {
-			case SD_IO_CISTPL_FUNCID:
-				if (tpllen < 2) {
-					printf("%s: bad CISTPL_FUNCID length\n",
-					       DEVNAME(sf->sc));
-					reg += tpllen;
-					break;
-				}
-				cis->function = sdmmc_io_read_1(sf0, reg);
+		case SD_IO_CISTPL_FUNCID:
+			if (tpllen < 2) {
+				printf("%s: bad CISTPL_FUNCID length\n",
+				    DEVNAME(sf->sc));
 				reg += tpllen;
 				break;
-			case SD_IO_CISTPL_MANFID:
-				if (tpllen < 4) {
-					printf("%s: bad CISTPL_MANFID length\n",
-					       DEVNAME(sf->sc));
-					reg += tpllen;
-					break;
-				}
-				cis->manufacturer = sdmmc_io_read_1(sf0, reg++);
-				cis->manufacturer |= sdmmc_io_read_1(sf0, reg++) << 8;
-				cis->product = sdmmc_io_read_1(sf0, reg++);
-				cis->product |= sdmmc_io_read_1(sf0, reg++) << 8;
+			}
+			cis->function = sdmmc_io_read_1(sf0, reg);
+			reg += tpllen;
+			break;
+		case SD_IO_CISTPL_MANFID:
+			if (tpllen < 4) {
+				printf("%s: bad CISTPL_MANFID length\n",
+				    DEVNAME(sf->sc));
+				reg += tpllen;
 				break;
-			case SD_IO_CISTPL_VERS_1:
-				if (tpllen < 2) {
-					printf("%s: CISTPL_VERS_1 too short\n",
-					       DEVNAME(sf->sc));
-					reg += tpllen;
-					break;
-				}
+			}
+			cis->manufacturer = sdmmc_io_read_1(sf0, reg++);
+			cis->manufacturer |= sdmmc_io_read_1(sf0, reg++) << 8;
+			cis->product = sdmmc_io_read_1(sf0, reg++);
+			cis->product |= sdmmc_io_read_1(sf0, reg++) << 8;
+			break;
+		case SD_IO_CISTPL_VERS_1:
+			if (tpllen < 2) {
+				printf("%s: CISTPL_VERS_1 too short\n",
+				    DEVNAME(sf->sc));
+				reg += tpllen;
+				break;
+			}
 			{
 				int start, i, ch, count;
-				
+
 				cis->cis1_major = sdmmc_io_read_1(sf0, reg++);
 				cis->cis1_minor = sdmmc_io_read_1(sf0, reg++);
-				
+
 				for (count = 0, start = 0, i = 0;
 				     (count < 4) && ((i + 4) < 256); i++) {
 					ch = sdmmc_io_read_1(sf0, reg + i);
@@ -122,23 +131,23 @@ sdmmc_read_cis(struct sdmmc_function *sf, struct sdmmc_cis *cis)
 					cis->cis1_info_buf[i] = ch;
 					if (ch == 0) {
 						cis->cis1_info[count] =
-						cis->cis1_info_buf + start;
+						    cis->cis1_info_buf + start;
 						start = i + 1;
 						count++;
 					}
 				}
-				
+
 				reg += tpllen - 2;
 			}
-				break;
-			default:
-				DPRINTF(("%s: unknown tuple code %#x, length %d\n",
-					 DEVNAME(sf->sc), tplcode, tpllen));
-				reg += tpllen;
-				break;
+			break;
+		default:
+			DPRINTF(("%s: unknown tuple code %#x, length %d\n",
+			    DEVNAME(sf->sc), tplcode, tpllen));
+			reg += tpllen;
+			break;
 		}
 	}
-	
+
 	return 0;
 }
 
@@ -147,10 +156,10 @@ sdmmc_print_cis(struct sdmmc_function *sf)
 {
 	struct sdmmc_cis *cis = &sf->cis;
 	int i;
-	
+
 	printf("%s: CIS version %d.%d\n", DEVNAME(sf->sc),
-	       cis->cis1_major, cis->cis1_minor);
-	
+	    cis->cis1_major, cis->cis1_minor);
+
 	printf("%s: CIS info: ", DEVNAME(sf->sc));
 	for (i = 0; i < 4; i++) {
 		if (cis->cis1_info[i] == NULL)
@@ -160,18 +169,18 @@ sdmmc_print_cis(struct sdmmc_function *sf)
 		printf("%s", cis->cis1_info[i]);
 	}
 	printf("\n");
-	
+
 	printf("%s: Manufacturer code 0x%x, product 0x%x\n",
-	       DEVNAME(sf->sc), cis->manufacturer, cis->product);
-	
+	    DEVNAME(sf->sc), cis->manufacturer, cis->product);
+
 	printf("%s: function %d: ", DEVNAME(sf->sc), sf->number);
 	switch (sf->cis.function) {
-		case TPLFID_FUNCTION_SDIO:
-			printf("SDIO");
-			break;
-		default:
-			printf("unknown (%d)", sf->cis.function);
-			break;
+	case TPLFID_FUNCTION_SDIO:
+		printf("SDIO");
+		break;
+	default:
+		printf("unknown (%d)", sf->cis.function);
+		break;
 	}
 	printf("\n");
 }

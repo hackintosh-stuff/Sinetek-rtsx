@@ -4,7 +4,7 @@
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *		OpenBSD: sdmmcdevs,v 1.8 2007/05/11 17:16:16 mglocker Exp
+ *		OpenBSD: sdmmcdevs,v 1.8 2007/05/11 17:16:16 mglocker Exp 
  */
 
 /*
