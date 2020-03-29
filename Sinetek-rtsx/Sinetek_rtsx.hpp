@@ -162,6 +162,5 @@ public:
     struct device          *sdmmc;
     struct device           sc_dev; // parent?
     long sc_max_seg;
-    //long sc_max_xfer;
     void *sc_cookies[SDMMC_MAX_FUNCTIONS];
 };
