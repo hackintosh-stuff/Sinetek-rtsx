@@ -33,20 +33,18 @@ inline int UTLsplsdmmc(IORecursiveLock *l) {
 }
 
 #define splhigh() ({ \
-/* UTL_DEBUG(2, "Locking splsdmmc_lock"); */ \
-IORecursiveLockLock(sc->splsdmmc_rec_lock); \
-0; \
+	/* UTL_DEBUG(2, "Locking splsdmmc_lock"); */ \
+	IORecursiveLockLock(sc->splsdmmc_rec_lock); \
+	0; \
 })
 
 #define splx(n) do { \
-/* UTL_DEBUG(2, "Unlocking splsdmmc_lock"); */ \
-IORecursiveLockUnlock(sc->splsdmmc_rec_lock); \
+	/* UTL_DEBUG(2, "Unlocking splsdmmc_lock"); */ \
+	IORecursiveLockUnlock(sc->splsdmmc_rec_lock); \
 } while (0)
 
 #define INFSLP 0 // -1?
-#define tlseep_nsec(a1, a2, a3, a4) \
-do { \
-} while(0)
+#define tlseep_nsec(a1, a2, a3, a4) do {} while(0)
 #endif // RTSX_USE_IOLOCK
 
 // SIMPLEQ -> STAILQ
@@ -70,9 +68,9 @@ do { \
 #undef KASSERT
 #define KASSERT(expr) \
 do { \
-if (!(expr)) { \
-UTL_ERR("Assertion failed: %s", #expr); \
-} \
+	if (!(expr)) { \
+		UTL_ERR("Assertion failed: %s", #expr); \
+	} \
 } while (0)
 #endif
 
@@ -128,6 +126,8 @@ extern int hz;
 #define config_activate_children(a1, a2) (0) /* expects an expression */
 #define config_detach(a1, a2) do {} while (0)
 #define config_found_sm(a1, a2, a3, a4) (0) /* expects an expression */
+#define config_pending_decr() do {} while (0)
+#define config_pending_incr() do {} while (0)
 
 // kthread*
 #define kthread_create(a1, a2, a3, a4) (0) /* expects an expression */
@@ -159,15 +159,15 @@ static inline void delay(unsigned int microseconds) {
 #undef READ4
 #define READ4(sc, reg) \
 ({ \
-uint32_t val; \
-sc->memory_descriptor_->readBytes(reg, &val, 4); \
-val; \
+	uint32_t val; \
+	sc->memory_descriptor_->readBytes(reg, &val, 4); \
+	val; \
 })
 #undef WRITE4
 #define WRITE4(sc, reg, val) \
 do { \
-uint32_t _val = val; \
-sc->memory_descriptor_->writeBytes(reg, &_val, 4); \
+	uint32_t _val = val; \
+	sc->memory_descriptor_->writeBytes(reg, &_val, 4); \
 } while (0)
 
 #define RTSX_F_525A          0x20

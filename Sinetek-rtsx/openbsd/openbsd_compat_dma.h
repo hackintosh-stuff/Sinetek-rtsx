@@ -55,7 +55,7 @@ bus_dmamap_load(bus_dma_tag_t tag, bus_dmamap_t dmam, void *buf, bus_size_t bufl
 void
 bus_dmamap_unload(bus_dma_tag_t dmat, bus_dmamap_t map);
 
-// Perform pre- and post-DMA operation cache and/or buffer synchronization
+/// Perform pre- and post-DMA operation cache and/or buffer synchronization
 void
 bus_dmamap_sync(bus_dma_tag_t tag, bus_dmamap_t dmam, bus_addr_t offset, bus_size_t size, int ops);
 
