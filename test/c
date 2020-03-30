@@ -1,0 +1,17 @@
+#!/bin/bash
+
+KPATH="$HOME/Library/Developer/Xcode/DerivedData/Sinetek-rtsx-daineymznwteyvetanjagiawuohi/Build/Products/Debug"
+KEXT="Sinetek-rtsx.kext"
+
+if [ ! -x /usr/local/bin/rsync ]; then
+	echo "Install brew's rsync."
+	exit 1
+fi
+
+if [ -d "$KEXT" ]; then
+	sudo rm -rf "$KEXT"
+fi
+
+# copy and set uid/gid
+cp -r "$KPATH/$KEXT" ./
+sudo chown -R root:wheel "$KEXT"

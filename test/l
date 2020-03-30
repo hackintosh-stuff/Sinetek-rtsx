@@ -1,0 +1,3 @@
+#!/bin/bash
+
+log stream --process 0 --predicate 'sender == "Sinetek-rtsx"' --style compact
