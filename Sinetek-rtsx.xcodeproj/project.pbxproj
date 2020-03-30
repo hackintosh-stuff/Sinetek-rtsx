@@ -27,6 +27,7 @@
 		9319F48C243081B600A4921E /* openbsd_compat_dma.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = openbsd_compat_dma.h; sourceTree = "<group>"; };
 		9319F48D243081B600A4921E /* openbsd_compat.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = openbsd_compat.cpp; sourceTree = "<group>"; };
 		9319F48E243081B600A4921E /* openbsd_compat_dma.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = openbsd_compat_dma.cpp; sourceTree = "<group>"; };
+		932FC7C12432230000B1A5D0 /* openbsd_compat_queue.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = openbsd_compat_queue.h; sourceTree = "<group>"; };
 		9355866F242211D600B8B0B9 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = "<none>"; };
 		93576F8524263CF3006F1A33 /* openbsd_compat.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = openbsd_compat.h; sourceTree = "<group>"; };
 		935884C92421D21500E781A7 /* util.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = util.h; sourceTree = "<group>"; };
@@ -70,6 +71,7 @@
 				9319F48B243081B600A4921E /* openbsd_compat_types.h */,
 				9319F48D243081B600A4921E /* openbsd_compat.cpp */,
 				93576F8524263CF3006F1A33 /* openbsd_compat.h */,
+				932FC7C12432230000B1A5D0 /* openbsd_compat_queue.h */,
 			);
 			path = openbsd;
 			sourceTree = "<group>";

@@ -17,6 +17,7 @@ __END_DECLS
 
 // DMA-related functions
 #include "openbsd_compat_dma.h"
+#include "openbsd_compat_queue.h" // SIMPLEQ -> STAILQ
 
 #ifndef UTL_THIS_CLASS
 #define UTL_THIS_CLASS ""
@@ -46,16 +47,6 @@ inline int UTLsplsdmmc(IORecursiveLock *l) {
 #define INFSLP 0 // -1?
 #define tlseep_nsec(a1, a2, a3, a4) do {} while(0)
 #endif // RTSX_USE_IOLOCK
-
-// SIMPLEQ -> STAILQ
-#define SIMPLEQ_EMPTY       STAILQ_EMPTY
-#define SIMPLEQ_ENTRY       STAILQ_ENTRY
-#define SIMPLEQ_FIRST       STAILQ_FIRST
-#define SIMPLEQ_FOREACH     STAILQ_FOREACH
-#define SIMPLEQ_HEAD        STAILQ_HEAD
-#define SIMPLEQ_INIT        STAILQ_INIT
-#define SIMPLEQ_INSERT_TAIL STAILQ_INSERT_TAIL
-#define SIMPLEQ_NEXT        STAILQ_NEXT
 
 // disable execcisve logging from OpenBSD code
 #if DEBUG
