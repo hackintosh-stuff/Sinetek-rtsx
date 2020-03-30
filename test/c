@@ -1,6 +1,6 @@
 #!/bin/bash
 
-KPATH="$HOME/Library/Developer/Xcode/DerivedData/Sinetek-rtsx-daineymznwteyvetanjagiawuohi/Build/Products/Debug"
+KPATH="$HOME/Library/Developer/Xcode/DerivedData/Sinetek-rtsx-bpnguoevveybdhfrrjjdpfweiiwu/Build/Products/Debug"
 KEXT="Sinetek-rtsx.kext"
 
 if [ ! -x /usr/local/bin/rsync ]; then

@@ -1,3 +1,11 @@
 #!/bin/bash
 
-log stream --process 0 --predicate 'sender == "Sinetek-rtsx"' --style compact
+LOG_ARGS="--predicate 'processID == 0 AND sender == \"Sinetek-rtsx\"' --style compact"
+
+if [ $# -ge 1 -a "$1" = "show" ]; then
+	eval log show $LOG_ARGS
+elif [ $# -ge 1 -a "$1" = "erase" ]; then
+	sudo log erase -all
+else
+	eval log stream $LOG_ARGS
+fi
