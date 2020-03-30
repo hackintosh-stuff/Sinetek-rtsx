@@ -71,7 +71,7 @@ static inline const char *mmcCmd2str(uint16_t mmcCmd) {
 
 #define UTL_CHK_PTR(ptr, ret) do { \
 if (!(ptr)) { \
-	UTL_ERR("NULL ptr found!!!"); \
+	UTL_ERR("null pointer (%s) found!!!", #ptr); \
 	return ret; \
 } \
 } while (0)
@@ -136,5 +136,8 @@ static inline void dumpBuffer(IOMemoryDescriptor *md) {
     }
 #endif // DEBUG
 }
+
+#define RTSX_PTR_FMT "0x%08x%08x"
+#define RTSX_PTR_FMT_VAR(ptr) (uint32_t) ((uintptr_t) ptr >> 32), (uint32_t) (uintptr_t) ptr
 
 #endif /* SINETEK_RTSX_UTIL_H */

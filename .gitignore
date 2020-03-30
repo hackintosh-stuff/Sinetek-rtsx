@@ -34,3 +34,6 @@
 *.xcodeproj/xcuserdata
 build
 .vscode
+
+# Ignore kext itself
+Sinetek-rtsx.kext/

@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdocumentation"
 #pragma clang diagnostic ignored "-Winconsistent-missing-override"
 #include <IOKit/pci/IOPCIDevice.h>
 #pragma clang diagnostic pop

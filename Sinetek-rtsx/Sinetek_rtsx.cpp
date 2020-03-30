@@ -86,7 +86,9 @@ void rtsx_softc::stop(IOService *provider)
 	destroy_task_loop();
 	if (workloop_) {
 		workloop_->release();
-		workloop_ = NULL;
+		workloop_ = nullptr;
+	} else {
+		UTL_ERR("workloop_ is null");
 	}
 	PMstop();
 	
@@ -173,12 +175,18 @@ void rtsx_softc::rtsx_pci_attach()
 
 void rtsx_softc::rtsx_pci_detach()
 {
-//	rtsx_detach();
-	
+	//	rtsx_detach();
+
+	UTL_CHK_PTR(workloop_,);
+	UTL_CHK_PTR(intr_source_,);
+
 	workloop_->removeEventSource(intr_source_);
 	intr_source_->release();
+	intr_source_ = nullptr;
 #if RTSX_USE_IOLOCK
-// should this be called in free()?
+	// should this be called in free()?
+	UTL_CHK_PTR(splsdmmc_rec_lock,);
+	UTL_CHK_PTR(intr_status_lock,);
 	IORecursiveLockFree(this->splsdmmc_rec_lock);
 	this->splsdmmc_rec_lock = nullptr;
 	IOLockFree(this->intr_status_lock);
@@ -231,17 +239,25 @@ void rtsx_softc::prepare_task_loop()
 
 void rtsx_softc::destroy_task_loop()
 {
+	UTL_CHK_PTR(task_execute_one_,);
 	task_execute_one_->cancelTimeout();
 #if RTSX_USE_IOCOMMANDGATE
-    workloop_->removeEventSource(task_command_gate_);
-    task_command_gate_->release();
-    task_command_gate_ = NULL;
-    workloop_->removeEventSource(task_execute_one_);
-    task_execute_one_->release();
+	UTL_CHK_PTR(workloop_,)
+	workloop_->removeEventSource(task_command_gate_);
+	UTL_CHK_PTR(task_command_gate_,);
+	task_command_gate_->release();
+	task_command_gate_ = nullptr;
+	UTL_CHK_PTR(workloop_,);
+	workloop_->removeEventSource(task_execute_one_);
+	task_execute_one_->release();
+	task_execute_one_ = nullptr;
 #else
+	UTL_CHK_PTR(task_loop_,);
 	task_loop_->removeEventSource(task_execute_one_);
-    task_execute_one_->release();
+	task_execute_one_->release();
+	task_execute_one_ = nullptr;
 	task_loop_->release();
+	task_loop_ = nullptr;
 #endif
 }
 
