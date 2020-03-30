@@ -28,19 +28,19 @@ void WRITE4(rtsx_softc *sc, uint32_t reg, uint32_t val);
 //
 enum
 {
-    kPowerStateSleep    = 0,
-    kPowerStateDoze     = 1,
-    kPowerStateNormal   = 2,
-    kPowerStateCount
+	kPowerStateSleep    = 0,
+	kPowerStateDoze     = 1,
+	kPowerStateNormal   = 2,
+	kPowerStateCount
 };
 //
 // syscl - Define usable power states
 //
 static IOPMPowerState ourPowerStates[kPowerStateCount] =
 {
-    { 1,0,0,0,0,0,0,0,0,0,0,0 },
-    { 1,kIOPMDeviceUsable,kIOPMDoze,kIOPMDoze,0,0,0,0,0,0,0,0 },
-    { 1,kIOPMDeviceUsable,IOPMPowerOn,IOPMPowerOn,0,0,0,0,0,0,0,0 }
+	{ 1,0,0,0,0,0,0,0,0,0,0,0 },
+	{ 1,kIOPMDeviceUsable,kIOPMDoze,kIOPMDoze,0,0,0,0,0,0,0,0 },
+	{ 1,kIOPMDeviceUsable,IOPMPowerOn,IOPMPowerOn,0,0,0,0,0,0,0,0 }
 };
 
 bool rtsx_softc::start(IOService *provider)
@@ -72,9 +72,9 @@ bool rtsx_softc::start(IOService *provider)
 	
 	UTL_LOG("Driver started (%s version)",
 #if DEBUG
-		  "debug");
+		"debug");
 #else
-		  "release");
+	"release");
 #endif
 	return true;
 }
@@ -107,69 +107,69 @@ void rtsx_softc::rtsx_pci_attach()
 {
 	uint device_id;
 	//uint32_t flags;
-    int bar = RTSX_PCI_BAR;
+	int bar = RTSX_PCI_BAR;
 	
 	if ((provider_->extendedConfigRead16(RTSX_CFG_PCI) & RTSX_CFG_ASIC) != 0)
 	{
 		printf("no asic\n");
 		return;
 	}
-    
-    /* Enable the device */
-    provider_->setBusMasterEnable(true);
-    
-    /* syscl - Power up the device */
-    PMinit();
-    if (registerPowerDriver(this, ourPowerStates, kPowerStateCount) != IOPMNoErr)
-    {
-        IOLog("%s: could not register state.\n", __func__);
-    }
-    
-    /* Map device memory with register. */
+
+	/* Enable the device */
+	provider_->setBusMasterEnable(true);
+
+	/* syscl - Power up the device */
+	PMinit();
+	if (registerPowerDriver(this, ourPowerStates, kPowerStateCount) != IOPMNoErr)
+	{
+		IOLog("%s: could not register state.\n", __func__);
+	}
+
+	/* Map device memory with register. */
 	device_id = provider_->extendedConfigRead16(kIOPCIConfigDeviceID);
-	if (device_id == PCI_PRODUCT_REALTEK_RTS525A) 
+	if (device_id == PCI_PRODUCT_REALTEK_RTS525A)
 		bar = RTSX_PCI_BAR_525A;
-    map_ = provider_->mapDeviceMemoryWithRegister(bar);
-    if (!map_) return;
-    memory_descriptor_ = map_->getMemoryDescriptor();
-    
-    /* Map device interrupt. */
+	map_ = provider_->mapDeviceMemoryWithRegister(bar);
+	if (!map_) return;
+	memory_descriptor_ = map_->getMemoryDescriptor();
+
+	/* Map device interrupt. */
 #if RTSX_USE_IOFIES
-    intr_source_ = IOFilterInterruptEventSource::filterInterruptEventSource(this, trampoline_intr, is_my_interrupt, provider_);
+	intr_source_ = IOFilterInterruptEventSource::filterInterruptEventSource(this, trampoline_intr, is_my_interrupt, provider_);
 #else // RTSX_USE_IOFIES
-    intr_source_ = IOInterruptEventSource::interruptEventSource(this, trampoline_intr, provider_);
+	intr_source_ = IOInterruptEventSource::interruptEventSource(this, trampoline_intr, provider_);
 #endif // RTSX_USE_IOFIES
-    if (!intr_source_)
-    {
-        printf("can't map interrupt source\n");
-        return;
-    }
-    workloop_->addEventSource(intr_source_);
-    intr_source_->enable();
-    
-    /* Get the vendor and try to match on it. */
-    //device_id = provider_->extendedConfigRead16(kIOPCIConfigDeviceID);
-    switch (device_id) {
-        case PCI_PRODUCT_REALTEK_RTS5209:
-            flags = RTSX_F_5209;
-            break;
-        case PCI_PRODUCT_REALTEK_RTS5229:
-        case PCI_PRODUCT_REALTEK_RTS5249:
-            flags = RTSX_F_5229;
-            break;
-        case PCI_PRODUCT_REALTEK_RTS525A:
-            /* syscl - RTS525A */
-            flags = RTSX_F_525A;
-            break;
-        default:
-            flags = 0;
-            break;
-    }
+	if (!intr_source_)
+	{
+		printf("can't map interrupt source\n");
+		return;
+	}
+	workloop_->addEventSource(intr_source_);
+	intr_source_->enable();
+
+	/* Get the vendor and try to match on it. */
+	//device_id = provider_->extendedConfigRead16(kIOPCIConfigDeviceID);
+	switch (device_id) {
+		case PCI_PRODUCT_REALTEK_RTS5209:
+			flags = RTSX_F_5209;
+			break;
+		case PCI_PRODUCT_REALTEK_RTS5229:
+		case PCI_PRODUCT_REALTEK_RTS5249:
+			flags = RTSX_F_5229;
+			break;
+		case PCI_PRODUCT_REALTEK_RTS525A:
+			/* syscl - RTS525A */
+			flags = RTSX_F_525A;
+			break;
+		default:
+			flags = 0;
+			break;
+	}
 	
 	int error = rtsx_attach(this);
 	if (!error)
 	{
-//		pci_present_and_attached_ = true;
+		//		pci_present_and_attached_ = true;
 	}
 }
 
@@ -197,27 +197,27 @@ void rtsx_softc::rtsx_pci_detach()
 
 IOReturn rtsx_softc::setPowerState(unsigned long powerStateOrdinal, IOService *policyMaker)
 {
-    IOReturn ret = IOPMAckImplied;
-    
-    IOLog("%s::setPowerState() ===>\n", __func__);
-    
-    if (powerStateOrdinal)
-    {
-        IOLog("%s::setPowerState: Wake from sleep\n", __func__);
-        rtsx_activate(this, 1);
-        goto done;
-    }
-    else
-    {
-        IOLog("%s::setPowerState: Sleep the card\n", __func__);
-        rtsx_activate(this, 0);
-        goto done;
-    }
+	IOReturn ret = IOPMAckImplied;
+
+	IOLog("%s::setPowerState() ===>\n", __func__);
+
+	if (powerStateOrdinal)
+	{
+		IOLog("%s::setPowerState: Wake from sleep\n", __func__);
+		rtsx_activate(this, 1);
+		goto done;
+	}
+	else
+	{
+		IOLog("%s::setPowerState: Sleep the card\n", __func__);
+		rtsx_activate(this, 0);
+		goto done;
+	}
 
 done:
-    IOLog("%s::setPowerState() <===\n", __func__);
-    
-    return ret;
+	IOLog("%s::setPowerState() <===\n", __func__);
+
+	return ret;
 }
 
 void rtsx_softc::prepare_task_loop()
@@ -269,7 +269,7 @@ extern auto sdmmc_del_task(struct sdmmc_task *task)		-> void;
 
 void rtsx_softc::task_execute_one_impl_(OSObject *target, IOTimerEventSource *sender)
 {
-    extern void read_task_impl_(void *_args);
+	extern void read_task_impl_(void *_args);
 	UTL_DEBUG(1, "  ===> TOOK TASK WORKLOOP...");
 	if (!target) return;
 	rtsx_softc *sc = (rtsx_softc *)target;
@@ -286,11 +286,11 @@ void rtsx_softc::task_execute_one_impl_(OSObject *target, IOTimerEventSource *se
 		task->func(task->arg);
 		UTL_DEBUG(1, "  => Executed one task!");
 #if RTSX_FIX_TASK_BUG
-        if (task->func == read_task_impl_) {
-            // free only read_task
-            UTL_DEBUG(0, "Freeing read task...");
-            UTL_FREE(task, sizeof(sdmmc_task));
-        }
+		if (task->func == read_task_impl_) {
+			// free only read_task
+			UTL_DEBUG(0, "Freeing read task...");
+			UTL_FREE(task, sizeof(sdmmc_task));
+		}
 #endif
 	}
 #if RTSX_USE_IOLOCK
@@ -311,9 +311,9 @@ void rtsx_softc::blk_attach()
 	sddisk_ = new SDDisk();
 	sddisk_->init(this);
 	sddisk_->attach(this);
-    UTL_DEBUG(0, "Registering service...");
+	UTL_DEBUG(0, "Registering service...");
 	sddisk_->registerService(); // this should probably be called by the start() method of sddisk_
-    sddisk_->release();
+	sddisk_->release();
 }
 
 void rtsx_softc::blk_detach()
@@ -329,19 +329,19 @@ void rtsx_softc::blk_detach()
 #if RTSX_USE_IOFIES
 /// This function runs in interrupt context, meaning that IOLog CANNOT be used (only basic functionality is available).
 bool rtsx_softc::is_my_interrupt(OSObject *arg, IOFilterInterruptEventSource *source) {
-    if (!arg) return false;
+	if (!arg) return false;
 
-    rtsx_softc *sc = (rtsx_softc*) arg;
+	rtsx_softc *sc = (rtsx_softc*) arg;
 
-    auto status = READ4(sc, RTSX_BIPR);
-    if (!status) {
-        return false;
-    }
+	auto status = READ4(sc, RTSX_BIPR);
+	if (!status) {
+		return false;
+	}
 
-    auto bier = READ4(sc, RTSX_BIER);
-    if ((status & bier) == 0) return false;
+	auto bier = READ4(sc, RTSX_BIER);
+	if ((status & bier) == 0) return false;
 
-    return true;
+	return true;
 }
 #endif // RTSX_USE_IOFIES
 
@@ -351,14 +351,13 @@ void rtsx_softc::executeOneAsCommand() {
 	UTL_DEBUG(0, "Calling runAction()...");
 	task_command_gate_->runCommand(nullptr);
 	task_command_gate_->runAction(
-		(IOCommandGate::Action) executeOneCommandGateAction);
+				      (IOCommandGate::Action) executeOneCommandGateAction);
 	UTL_DEBUG(0, "runAction() returns");
 }
 
-IOReturn rtsx_softc::executeOneCommandGateAction(
-	OSObject *obj,
-	void *,
-	void *, void *, void * )
+IOReturn rtsx_softc::executeOneCommandGateAction(OSObject *obj,
+						 void *,
+						 void *, void *, void * )
 {
 	UTL_DEBUG(0, "EXECUTE ONE COMMANDGATEACTION CALLED!");
 	rtsx_softc::task_execute_one_impl_(obj, nullptr /* unused */);

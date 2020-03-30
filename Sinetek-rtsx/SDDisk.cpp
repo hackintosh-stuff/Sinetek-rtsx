@@ -52,34 +52,34 @@ bool SDDisk::attach(IOService* provider)
 	num_blocks_ = provider_->sc_fn0->csd.capacity;
 	blk_size_   = provider_->sc_fn0->csd.sector_size;
 	util_lock_ = IOLockAlloc();
-
+	
 	printf("rtsx: attaching SDDisk, num_blocks:%d  blk_size:%d\n",
 	       num_blocks_, blk_size_);
 	
-    UTL_LOG("SDDisk attached.");
+	UTL_LOG("SDDisk attached.");
 	return true;
 }
 
 void SDDisk::detach(IOService* provider)
 {
-    UTL_LOG("SDDisk detaching...");
+	UTL_LOG("SDDisk detaching...");
 	IOLockFree(util_lock_);
 	util_lock_ = NULL;
 	provider_->release();
 	provider_ = NULL;
 	
 	super::detach(provider);
-    UTL_LOG("SDDisk detached.");
+	UTL_LOG("SDDisk detached.");
 }
 
 IOReturn SDDisk::doEjectMedia(void)
 {
 	UTL_DEBUG(0, "START");
-    IOLog("%s: RAMDISK: doEjectMedia.", __func__);
+	IOLog("%s: RAMDISK: doEjectMedia.", __func__);
 	
 	// XXX signal intent further down the stack?
-    // syscl - implement eject routine here
-    rtsx_card_eject(provider_);
+	// syscl - implement eject routine here
+	rtsx_card_eject(provider_);
 	UTL_DEBUG(0, "END");
 	return kIOReturnSuccess;
 }
@@ -92,8 +92,8 @@ IOReturn SDDisk::doFormatMedia(UInt64 byteCapacity)
 
 UInt32 SDDisk::GetBlockCount() const
 {
-    UTL_DEBUG(0, "START");
-    return num_blocks_;
+	UTL_DEBUG(0, "START");
+	return num_blocks_;
 }
 
 UInt32 SDDisk::doGetFormatCapacities(UInt64* capacities, UInt32 capacitiesMaxCount) const
@@ -106,8 +106,8 @@ UInt32 SDDisk::doGetFormatCapacities(UInt64* capacities, UInt32 capacitiesMaxCou
 	/*
 	 * We need to run circles around the const-ness of this function.
 	 */
-//	auto blockCount = const_cast<SDDisk *>(this)->getBlockCount();
-    auto blockCount = GetBlockCount();
+	//	auto blockCount = const_cast<SDDisk *>(this)->getBlockCount();
+	auto blockCount = GetBlockCount();
 	
 	// The caller may provide a NULL array if it wishes to query the number of formats that we support.
 	if (capacities != NULL)
@@ -129,34 +129,34 @@ IOReturn SDDisk::doSynchronizeCache(void)
 
 char* SDDisk::getVendorString(void)
 {
-    UTL_DEBUG(0, "START");
-    // syscl - safely converted to char * use const_static due
-    // to ISO C++11 does not allow conversion from string literal to 'char *'
-    return const_cast<char *>("Realtek");
+	UTL_DEBUG(0, "START");
+	// syscl - safely converted to char * use const_static due
+	// to ISO C++11 does not allow conversion from string literal to 'char *'
+	return const_cast<char *>("Realtek");
 }
 
 char* SDDisk::getProductString(void)
 {
-    UTL_DEBUG(0, "START");
-    // syscl - safely converted to char * use const_static due
-    // to ISO C++11 does not allow conversion from string literal to 'char *'
-    return const_cast<char *>("SD Card Reader");
+	UTL_DEBUG(0, "START");
+	// syscl - safely converted to char * use const_static due
+	// to ISO C++11 does not allow conversion from string literal to 'char *'
+	return const_cast<char *>("SD Card Reader");
 }
 
 char* SDDisk::getRevisionString(void)
 {
-    UTL_DEBUG(0, "START");
-    // syscl - safely converted to char * use const_static due
-    // to ISO C++11 does not allow conversion from string literal to 'char *'
-    return const_cast<char *>("1.0");
+	UTL_DEBUG(0, "START");
+	// syscl - safely converted to char * use const_static due
+	// to ISO C++11 does not allow conversion from string literal to 'char *'
+	return const_cast<char *>("1.0");
 }
 
 char* SDDisk::getAdditionalDeviceInfoString(void)
 {
-    UTL_DEBUG(0, "START");
-    // syscl - safely converted to char * use const_static due
-    // to ISO C++11 does not allow conversion from string literal to 'char *''
-    return const_cast<char *>("1.0");
+	UTL_DEBUG(0, "START");
+	// syscl - safely converted to char * use const_static due
+	// to ISO C++11 does not allow conversion from string literal to 'char *''
+	return const_cast<char *>("1.0");
 }
 
 IOReturn SDDisk::reportBlockSize(UInt64 *blockSize)
@@ -171,17 +171,17 @@ IOReturn SDDisk::reportBlockSize(UInt64 *blockSize)
 
 IOReturn SDDisk::reportEjectability(bool *isEjectable)
 {
-    UTL_DEBUG(0, "START");
-    *isEjectable = true; // syscl - should be true
-    return kIOReturnSuccess;
+	UTL_DEBUG(0, "START");
+	*isEjectable = true; // syscl - should be true
+	return kIOReturnSuccess;
 }
 
 /* syscl - deprecated
-IOReturn SDDisk::reportLockability(bool *isLockable)
-{
-	*isLockable = false;
-	return kIOReturnSuccess;
-}*/
+ IOReturn SDDisk::reportLockability(bool *isLockable)
+ {
+ *isLockable = false;
+ return kIOReturnSuccess;
+ }*/
 
 IOReturn SDDisk::reportMaxValidBlock(UInt64 *maxBlock)
 {
@@ -287,21 +287,21 @@ void read_task_impl_(void *_args)
 #if RTSX_USE_WRITEBYTES
 	u_char buf[512];
 #else
-    { auto map = args->buffer->map();
-	// this is for 32-bit?? u_char * buf = (u_char *) map->getVirtualAddress();
-    u_char *buf = (u_char *) map->getAddress();
-	
-	for (UInt64 b = 0; b < args->nblks; ++b)
-	{
-//		sdmmc_mem_single_read_block(args->that->provider_->sc_fn0,
-//						    0, buf + b * 512, 512);
-		sdmmc_mem_read_block_subr(args->that->provider_->sc_fn0,
-					  0, buf, 512);
-//		sdmmc_go_idle_state(args->that->provider_);
-	}
-    map->release(); } // need to release map
-#endif
+	{ auto map = args->buffer->map();
+		// this is for 32-bit?? u_char * buf = (u_char *) map->getVirtualAddress();
+		u_char *buf = (u_char *) map->getAddress();
 		
+		for (UInt64 b = 0; b < args->nblks; ++b)
+		{
+			//		sdmmc_mem_single_read_block(args->that->provider_->sc_fn0,
+			//						    0, buf + b * 512, 512);
+			sdmmc_mem_read_block_subr(args->that->provider_->sc_fn0,
+						  0, buf, 512);
+			//		sdmmc_go_idle_state(args->that->provider_);
+		}
+		map->release(); } // need to release map
+#endif
+	
 	for (UInt64 b = 0; b < args->nblks; b++)
 	{
 		printf("would: %lld  last block %d\n", args->block + b, args->that->num_blocks_ - 1);
@@ -317,15 +317,15 @@ void read_task_impl_(void *_args)
 			UTL_ERR("ERROR READING BLOCK (blockNo=%d error=%d)", static_cast<int>(args->block + b), error);
 		}
 #else
-        auto would = args->block + b;
+		auto would = args->block + b;
 		//if ( would > 60751872 ) would = 60751871;
 		error = sdmmc_mem_read_block_subr(args->that->provider_->sc_fn0,
-				static_cast<int>(would), buf + b * 512, 512);
+						  static_cast<int>(would), buf + b * 512, 512);
 #endif
 		if (error) {
 			if (args->completion.action) {
 				(args->completion.action)(args->completion.target, args->completion.parameter,
-					kIOReturnIOError, 0);
+							  kIOReturnIOError, 0);
 			} else {
 				UTL_ERR("No completion action!");
 			}
@@ -335,17 +335,17 @@ void read_task_impl_(void *_args)
 	
 	if (args->completion.action) {
 		(args->completion.action)(args->completion.target, args->completion.parameter,
-			kIOReturnSuccess, actualByteCount);
+					  kIOReturnSuccess, actualByteCount);
 	} else {
 		UTL_ERR("No completion action!");
 	}
 	
 out:
-    if (error) {
-        UTL_ERR("END (error = %d)", error);
-    } else {
-        UTL_DEBUG(0, "END (error = %d)", error);
-    }
+	if (error) {
+		UTL_ERR("END (error = %d)", error);
+	} else {
+		UTL_DEBUG(0, "END (error = %d)", error);
+	}
 	delete args;
 }
 
@@ -392,7 +392,7 @@ IOReturn SDDisk::doAsyncReadWrite(IOMemoryDescriptor *buffer,
 	// printf("=====================================================\n");
 	UTL_DEBUG(0, "START (block=%d nblks=%d)", (int) block, (int) nblks);
 	IOLockLock(util_lock_);
-
+	
 	/*
 	 * Copy things over as we're going to lose the parameters once this
 	 * method returns. (async call)
@@ -409,11 +409,11 @@ IOReturn SDDisk::doAsyncReadWrite(IOMemoryDescriptor *buffer,
 	bioargs->that = this;
 	
 #if RTSX_FIX_TASK_BUG
-    UTL_DEBUG(0, "Allocating read task...");
-    auto newTask = UTL_MALLOC(sdmmc_task); // will be deleted after processed
-    if (!newTask) return kIOReturnNoMemory;
-    sdmmc_init_task(newTask, read_task_impl_, bioargs);
-    sdmmc_add_task(provider_, newTask);
+	UTL_DEBUG(0, "Allocating read task...");
+	auto newTask = UTL_MALLOC(sdmmc_task); // will be deleted after processed
+	if (!newTask) return kIOReturnNoMemory;
+	sdmmc_init_task(newTask, read_task_impl_, bioargs);
+	sdmmc_add_task(provider_, newTask);
 #else
 	sdmmc_init_task(&provider_->read_task_, read_task_impl_, bioargs);
 	sdmmc_add_task(provider_, &provider_->read_task_);

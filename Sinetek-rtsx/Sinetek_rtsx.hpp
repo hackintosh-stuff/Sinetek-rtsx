@@ -26,18 +26,18 @@
 class SDDisk;
 struct rtsx_softc : public IOService
 {
-
+	
 	OSDeclareDefaultStructors(rtsx_softc);
-    
+	
 public:
-    
+	
 	virtual bool start(IOService * provider) override;
 	virtual void stop(IOService * provider) override;
-    
+	
 	void rtsx_pci_attach();
 	void rtsx_pci_detach();
-    /* syscl - Power Management Support */
-    virtual IOReturn setPowerState(unsigned long powerStateOrdinal, IOService * policyMaker) override;
+	/* syscl - Power Management Support */
+	virtual IOReturn setPowerState(unsigned long powerStateOrdinal, IOService * policyMaker) override;
 	
 	void blk_attach();
 	void blk_detach();
@@ -45,7 +45,7 @@ public:
 #if RTSX_USE_IOFIES
 	static bool is_my_interrupt(OSObject *arg, IOFilterInterruptEventSource *source);
 #endif // RTSX_USE_IOFIES
-    
+	
 	// ** //
 	IOPCIDevice *		provider_;
 	IOWorkLoop *		workloop_;
@@ -56,9 +56,9 @@ public:
 #if RTSX_USE_IOCOMMANDGATE
 	void executeOneAsCommand();
 	static int executeOneCommandGateAction(
-		OSObject *sc,
-		void *newRequest,
-		void *, void *, void * );
+					       OSObject *sc,
+					       void *newRequest,
+					       void *, void *, void * );
 #endif
 #else // RTSX_USE_IOFIES
 	IOInterruptEventSource *intr_source_;
@@ -66,7 +66,7 @@ public:
 	
 	SDDisk *			sddisk_;
 #if !RTSX_FIX_TASK_BUG
-    // This is not needed, since we will dynamically allocate read tasks
+	// This is not needed, since we will dynamically allocate read tasks
 	struct sdmmc_task	read_task_;
 #endif
 	
@@ -75,9 +75,9 @@ public:
 	 */
 	int		flags;
 #if RTSX_USE_IOLOCK
-    IOLock *          intr_status_lock;
-    IORecursiveLock * splsdmmc_rec_lock;
-    bool              intr_status_event;
+	IOLock *          intr_status_lock;
+	IORecursiveLock * splsdmmc_rec_lock;
+	bool              intr_status_event;
 #endif
 	uint32_t		intr_status;
 	u_int8_t		regs[RTSX_NREG];/* host controller state */
@@ -145,5 +145,5 @@ public:
 	void *sc_scsibus;		/* SCSI bus emulation softc */
 	TAILQ_HEAD(, sdmmc_intr_handler) sc_intrq; /* interrupt handlers */
 	long sc_max_xfer;		/* maximum transfer size */
-
+	
 };
