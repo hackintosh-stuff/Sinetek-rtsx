@@ -103,6 +103,8 @@ bus_dmamem_alloc(bus_dma_tag_t tag, bus_size_t size, bus_size_t alignment, bus_s
 	if (nsegs != 1) return kIOReturnBadArgument; // only one supported for now
 	_bus_dma_tag *_tag = reinterpret_cast<_bus_dma_tag *>(tag);
 	UTL_CHK_PTR(_tag, kIOReturnBadArgument);
+	UTL_CHK_PTR(segs, kIOReturnBadArgument);
+	UTL_CHK_PTR(rsegs, kIOReturnBadArgument);
 
 	if (_tag->memoryDescriptor) return kIOReturnUnsupported; // only one dma_alloc
 
@@ -118,6 +120,12 @@ bus_dmamem_alloc(bus_dma_tag_t tag, bus_size_t size, bus_size_t alignment, bus_s
 
 	IOByteCount len;
 	auto addr = _tag->memoryDescriptor->getPhysicalSegment(0, &len);
+	if (len != size) {
+		UTL_ERR("len (%d) != size (%d)", (int) len, (int) size);
+		_tag->memoryDescriptor->release();
+		_tag->memoryDescriptor = nullptr;
+		return kIOReturnUnsupported;
+	}
 	segs[0].ds_addr = addr;
 	segs[0].ds_len = len;
 
@@ -130,6 +138,7 @@ void
 bus_dmamem_free(bus_dma_tag_t tag, bus_dma_segment_t *segs, int nsegs)
 {
 	UTL_DEBUG(1, "START");
+	UTL_CHK_PTR(segs,);
 	if (nsegs != 1) return; // only one supported for now
 	_bus_dma_tag *_tag = reinterpret_cast<_bus_dma_tag *>(tag);
 	if (!_tag->memoryDescriptor) return;
@@ -143,6 +152,7 @@ int
 bus_dmamem_map(bus_dma_tag_t tag, bus_dma_segment_t *segs, int nsegs, size_t size, caddr_t *kvap, int flags)
 {
 	UTL_DEBUG(1, "START");
+	UTL_CHK_PTR(segs, kIOReturnBadArgument);
 	if (nsegs != 1) return kIOReturnUnsupported; // only one supported for now
 	_bus_dma_tag *_tag = reinterpret_cast<_bus_dma_tag *>(tag);
 	UTL_CHK_PTR(_tag, kIOReturnBadArgument);
@@ -152,6 +162,11 @@ bus_dmamem_map(bus_dma_tag_t tag, bus_dma_segment_t *segs, int nsegs, size_t siz
 	if (_tag->memoryMap) return kIOReturnUnsupported;
 
 	_tag->memoryMap = _tag->memoryDescriptor->map();
+	if (!_tag->memoryMap) {
+		UTL_ERR("memoryDescriptor->map() returned null!");
+		return kIOReturnNoMemory;
+	}
+
 	*kvap = (caddr_t) _tag->memoryMap->getAddress(); // getVirtualAddress();
 	return kIOReturnSuccess;
 }
