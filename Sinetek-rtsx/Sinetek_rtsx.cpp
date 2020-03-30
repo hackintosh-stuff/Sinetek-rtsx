@@ -206,22 +206,29 @@ void rtsx_softc::rtsx_pci_detach()
 }
 
 
+// TODO: Seems like this is wrong. Power states should match those supported by the OpenBSD driver.
+// TODO: Review this method and power in general.
 IOReturn rtsx_softc::setPowerState(unsigned long powerStateOrdinal, IOService *policyMaker)
 {
 	IOReturn ret = IOPMAckImplied;
+	auto previousState = this->getPowerState();
 
 	IOLog("%s::setPowerState() ===>\n", __func__);
 
 	if (powerStateOrdinal)
 	{
-		UTL_DEBUG(0, "Wake from sleep (powerStateOrdinal = %u)\n", (unsigned) powerStateOrdinal);
+		UTL_DEBUG(0, "Wake from sleep (powerStateOrdinal: %u -> %u)",
+			  (unsigned) previousState,
+			  (unsigned) powerStateOrdinal);
 		// TODO: SEND PROPER ARGUMENT (DVACT_*)
 		//        rtsx_activate(this, 1);
 		goto done;
 	}
 	else
 	{
-		UTL_DEBUG(0, "Sleep the card (powerStateOrdinal = %u)\n", (unsigned) powerStateOrdinal);
+		UTL_DEBUG(0, "Sleep the card (powerStateOrdinal: %u -> %u)\n",
+			  (unsigned) previousState,
+			  (unsigned) powerStateOrdinal);
 		// TODO: SEND PROPER ARGUMENT (DVACT_*)
 		//        rtsx_activate(this, 0);
 		goto done;

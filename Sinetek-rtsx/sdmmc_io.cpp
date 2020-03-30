@@ -279,6 +279,8 @@ sdmmc_io_attach(struct sdmmc_softc *sc)
 	struct sdmmc_function *sf;
 	struct sdmmc_attach_args saa;
 
+	UTL_DEBUG(1, "START (if this function is called, we need to implement a more intelligent config_found_sm...)");
+
 	rw_assert_wrlock(&sc->sc_lock);
 
 	SIMPLEQ_FOREACH(sf, &sc->sf_head, sf_list) {
@@ -291,6 +293,7 @@ sdmmc_io_attach(struct sdmmc_softc *sc)
 		sf->child = config_found_sm(&sc->sc_dev, &saa, sdmmc_print,
 		    sdmmc_submatch);
 	}
+	UTL_DEBUG(1, "END");
 }
 
 int
