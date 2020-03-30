@@ -151,17 +151,19 @@ public:
 
 
 
-	// added just to prevent errorss...
+	// added just to prevent errorss (SHARED BY BOTH!!! TODO: FIX THIS!!)...
+	struct device           sc_dev; // parent? (shared by both!!) OJOOOOOO!!!!
+	// added just to prevent errorss (sdmmc_softc)...
 	sdmmc_chip_functions   *sct;
 	sdmmc_chipset_handle_t  sch;
-	bus_dmamap_t            sc_dmap;
 	bus_dma_tag_t           sc_dmat;
-	bus_dma_tag_t           dmat;
-	caddr_t                 admabuf;
-	bus_dmamap_t            dmap_adma;
-	bus_dma_segment_t      *adma_segs;
+	bus_dmamap_t            sc_dmap;
+	long                    sc_max_seg;
+	void                   *sc_cookies[SDMMC_MAX_FUNCTIONS];
+	// added just to prevent errorss (rtsx_softc)...
 	struct device          *sdmmc;
-	struct device           sc_dev; // parent?
-	long sc_max_seg;
-	void *sc_cookies[SDMMC_MAX_FUNCTIONS];
+	bus_dma_tag_t           dmat;
+	bus_dmamap_t            dmap_adma;
+	caddr_t                 admabuf;
+	bus_dma_segment_t       adma_segs[1];
 };
