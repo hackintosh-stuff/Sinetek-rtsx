@@ -10,14 +10,18 @@
 #error UTL_THIS_CLASS must be defined before including this file (i.e.: #define UTL_THIS_CLASS "SDDisk::").
 #endif
 
+#ifndef UTL_LOG_DELAY_MS
+#define UTL_LOG_DELAY_MS 0 /* no delay */
+#endif
+
 #define UTL_ERR(fmt, ...) do { \
 	os_log_fault(OS_LOG_DEFAULT, "rtsx: %12s%-22s: " fmt "\n", UTL_THIS_CLASS, __func__, ##__VA_ARGS__); \
-	IOSleep(5000); /* Wait for log to appear... */ \
+	if (UTL_LOG_DELAY_MS) IOSleep(UTL_LOG_DELAY_MS); /* Wait for log to appear... */ \
 } while (0)
 
 #define UTL_LOG(fmt, ...) do { \
 	os_log(OS_LOG_DEFAULT, "rtsx: %12s%-22s: " fmt "\n", UTL_THIS_CLASS, __func__, ##__VA_ARGS__); \
-	IOSleep(5000); /* Wait for log to appear... */ \
+	if (UTL_LOG_DELAY_MS) IOSleep(UTL_LOG_DELAY_MS); /* Wait for log to appear... */ \
 } while (0)
 
 #define UTL_CHK_SUCCESS(expr) \
@@ -38,7 +42,7 @@
 do { \
 	if (lvl < UTL_DEBUG_LEVEL) { \
 		os_log(OS_LOG_DEFAULT, "rtsx: %12s%-22s: " fmt "\n", UTL_THIS_CLASS, __func__, ##__VA_ARGS__); \
-		IOSleep(5000); /* Wait for log to appear... */ \
+		if (UTL_LOG_DELAY_MS) IOSleep(UTL_LOG_DELAY_MS); /* Wait for log to appear... */ \
 	} \
 } while (0)
 #else // DEBUG
