@@ -15,8 +15,12 @@ __END_DECLS
 #include <IOKit/IOLib.h> // IOMalloc / IOFree
 #include <IOKit/IOTimerEventSource.h>
 
-// DMA-related functions
-#include "openbsd_compat_dma.h"
+// other headers from OpenBSD (they have to be at the end since they use types defined here
+#define _KERNEL // needed by some headers
+
+#include "openbsd_compat_types.h" // type definitions (must be included before any other openbsd_compat*)
+#include "openbsd_compat_config.h" // config_*
+#include "openbsd_compat_dma.h" // DMA-related functions
 #include "openbsd_compat_queue.h" // SIMPLEQ -> STAILQ
 
 #ifndef UTL_THIS_CLASS
@@ -97,12 +101,7 @@ constexpr rtsx_proc *curproc = nullptr;
 #define sdmmc_scsi_detach(a1) do {} while (0)
 
 extern int hz;
-#include "openbsd_compat_types.h"
 
-#define sdmmc_softc rtsx_softc // TODO: FIX THIS MESS
-
-// other headers from OpenBSD (they have to be at the end since they use types defined here
-#define _KERNEL // needed by some headers
 #include "device.h"
 #include "sdmmc_ioreg.h"
 #include "sdmmcchip.h"
@@ -113,12 +112,6 @@ extern int hz;
 #include "rtsxvar.h"
 #include "Sinetek_rtsx.hpp"
 
-// config*
-#define config_activate_children(a1, a2) (0) /* expects an expression */
-#define config_detach(a1, a2) do {} while (0)
-#define config_found_sm(a1, a2, a3, a4) (0) /* expects an expression */
-#define config_pending_decr() do {} while (0)
-#define config_pending_incr() do {} while (0)
 
 // kthread*
 #define kthread_create(a1, a2, a3, a4) (0) /* expects an expression */

@@ -3,6 +3,8 @@
 
 #include <libkern/libkern.h> // size_t
 
+#define sdmmc_softc rtsx_softc // TODO: FIX THIS MESS
+
 typedef u_long bus_addr_t;
 typedef void*  bus_dmamap_callback_t; // don't know the type yet!
 //typedef void*  bus_dmasync_op_t; // don't know the type yet!
