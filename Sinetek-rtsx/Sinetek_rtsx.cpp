@@ -64,13 +64,19 @@ bool rtsx_softc::start(IOService *provider)
 	provider_->setMemoryEnable(true);
 
 	prepare_task_loop();
+#if DEBUG
+//	goto LEAVE;
+#endif
 	rtsx_pci_attach();
 
+#if DEBUG
+LEAVE:
+#endif
 	UTL_LOG("Driver started (%s version)",
 #if DEBUG
 		"debug");
 #else
-	"release");
+		"release");
 #endif
 	return true;
 }
@@ -78,7 +84,13 @@ bool rtsx_softc::start(IOService *provider)
 // WATCH OUT: stop() may not be called if start() fails!
 void rtsx_softc::stop(IOService *provider)
 {
+#if DEBUG
+//	goto LEAVE;
+#endif
 	rtsx_pci_detach();
+#if DEBUG
+LEAVE:
+#endif
 	destroy_task_loop();
 	if (workloop_) {
 		workloop_->release();
