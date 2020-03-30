@@ -131,6 +131,7 @@ bus_dmamem_alloc(bus_dma_tag_t tag, bus_size_t size, bus_size_t alignment, bus_s
 
 	// call prepare here? does this wire the pages?
 	_tag->memoryDescriptor->prepare();
+	UTL_DEBUG(1, "END");
 	return 0;
 }
 
@@ -143,6 +144,7 @@ bus_dmamem_free(bus_dma_tag_t tag, bus_dma_segment_t *segs, int nsegs)
 	_bus_dma_tag *_tag = reinterpret_cast<_bus_dma_tag *>(tag);
 	if (!_tag->memoryDescriptor) return;
 
+	// complete and release
 	_tag->memoryDescriptor->complete();
 	_tag->memoryDescriptor->release();
 	_tag->memoryDescriptor = nullptr;

@@ -193,6 +193,7 @@ rtsx_attach(struct rtsx_softc *sc, bus_space_tag_t iot,
 	sc->dmat = dmat;
 	sc->flags = flags;
 
+	UTL_DEBUG(1, "Calling rtsx_init...");
 	if (rtsx_init(sc, 1))
 		return 1;
 

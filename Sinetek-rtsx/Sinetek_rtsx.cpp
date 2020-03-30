@@ -92,8 +92,9 @@ void rtsx_softc::stop(IOService *provider)
 	UTL_LOG("Driver stopped.");
 }
 
-static void trampoline_intr(OSObject *ih, IOInterruptEventSource *, int count)
+static void trampoline_intr(OSObject *ih, IOInterruptEventSource *ies, int count)
 {
+	UTL_DEBUG(3, "Interrupt received (ies=" RTSX_PTR_FMT " count=%d)!", RTSX_PTR_FMT_VAR(ies), count);
 	/* go to isr handler */
 	rtsx_softc * that = OSDynamicCast(rtsx_softc, ih);
 	rtsx_intr(that);
@@ -104,6 +105,8 @@ void rtsx_softc::rtsx_pci_attach()
 	uint device_id;
 	//uint32_t flags;
 	int bar = RTSX_PCI_BAR;
+
+	UTL_DEBUG(2, "START");
 
 	if ((provider_->extendedConfigRead16(RTSX_CFG_PCI) & RTSX_CFG_ASIC) != 0)
 	{
@@ -167,12 +170,18 @@ void rtsx_softc::rtsx_pci_attach()
 			break;
 	}
 
+	UTL_DEBUG(2, "Calling attach...");
 	int error = rtsx_attach(this, gBusSpaceTag, gBusSpaceHandle,
 				0/* ignored */, gBusDmaTag, flags);
-	if (!error)
-	{
+
+	if (!error) {
 		//		pci_present_and_attached_ = true;
+		if (this->flags & RTSX_F_SDIO_SUPPORT)
+			UTL_DEBUG(1, "SDIO detected");
+	} else {
+		UTL_ERR("rtsx_attach returned error %d", error);
 	}
+	UTL_DEBUG(2, "END");
 }
 
 void rtsx_softc::rtsx_pci_detach()
@@ -205,13 +214,15 @@ IOReturn rtsx_softc::setPowerState(unsigned long powerStateOrdinal, IOService *p
 
 	if (powerStateOrdinal)
 	{
-		IOLog("%s::setPowerState: Wake from sleep\n", __func__);
+		UTL_DEBUG(0, "Wake from sleep (powerStateOrdinal = %u)\n", (unsigned) powerStateOrdinal);
+		// TODO: SEND PROPER ARGUMENT (DVACT_*)
 		//        rtsx_activate(this, 1);
 		goto done;
 	}
 	else
 	{
-		IOLog("%s::setPowerState: Sleep the card\n", __func__);
+		UTL_DEBUG(0, "Sleep the card (powerStateOrdinal = %u)\n", (unsigned) powerStateOrdinal);
+		// TODO: SEND PROPER ARGUMENT (DVACT_*)
 		//        rtsx_activate(this, 0);
 		goto done;
 	}
