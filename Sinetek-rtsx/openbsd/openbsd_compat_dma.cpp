@@ -128,6 +128,7 @@ bus_dmamem_alloc(bus_dma_tag_t tag, bus_size_t size, bus_size_t alignment, bus_s
 	}
 	segs[0].ds_addr = addr;
 	segs[0].ds_len = len;
+	*rsegs = 1;
 
 	// call prepare here? does this wire the pages?
 	_tag->memoryDescriptor->prepare();
