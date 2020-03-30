@@ -116,6 +116,10 @@ void rtsx_softc::rtsx_pci_attach()
 
 	/* syscl - Power up the device */
 	PMinit();
+
+	// join into the power plane
+	provider_->joinPMtree(this);
+
 	if (registerPowerDriver(this, ourPowerStates, kPowerStateCount) != IOPMNoErr)
 	{
 		IOLog("%s: could not register state.\n", __func__);
