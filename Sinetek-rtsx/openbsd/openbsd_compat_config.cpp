@@ -1,8 +1,8 @@
 #include "openbsd_compat_config.h"
 
 #include <string.h> // strcmp
-#include <libkern/OSMalloc.h> // OSMalloc, OSFree
 #include <sys/errno.h> // ENOTSUP
+#include <IOKit/IOLib.h> // IOMalloc, IOFree
 
 #include "device.h"
 #include "sdmmcvar.h" // sdmmc_attach_args, sdmmc_softc_original
@@ -47,8 +47,10 @@ static struct device *config_attach(struct device *parent, void *match, void *au
 
 	int32_t devSize = (int32_t) this_cfdata->cf_attach->ca_devsize;
 	// allocate memory (TODO: check that it is freed on detach)
-	ret = (struct device *) OSMalloc(devSize, OSMT_DEFAULT);
+	UTL_DEBUG(2, "Allocating %d bytes...", devSize);
+	ret = (struct device *) IOMalloc(devSize);
 	UTL_CHK_PTR(ret, nullptr);
+	UTL_DEBUG(2, "Memory allocated");
 	bzero(ret, devSize);
 
 	// copy name (the only used member?)
@@ -122,7 +124,7 @@ int config_detach(struct device *dev, int flags)
 	// TODO: Check OpenBSD code. It does more processing here...
 	
 	uint32_t devSize = (uint32_t) cf_attach->ca_devsize;
-	OSFree(dev, devSize, OSMT_DEFAULT);
+	IOFree(dev, devSize);
 	return ret;
 }
 
