@@ -1,7 +1,8 @@
 #include "openbsd_compat_config.h"
 
-#include <libkern/OSMalloc.h> // OSMalloc, OSFree
 #include <string.h> // strcmp
+#include <libkern/OSMalloc.h> // OSMalloc, OSFree
+#include <sys/errno.h> // ENOTSUP
 
 #include "device.h"
 #include "sdmmcvar.h" // sdmmc_attach_args, sdmmc_softc_original
@@ -14,6 +15,10 @@
 extern struct cfattach sdmmc_ca;
 extern struct cfdriver sdmmc_cd;
 extern struct cfdriver rtsx_cd;
+
+// forward-declare static functions
+static int config_deactivate(struct device *dev);
+static int config_suspend(struct device *dev, int act);
 
 /// Array of cfdata to be matched
 /// TODO: should be this named cfdata as defined in device.h?
@@ -64,6 +69,7 @@ static struct device *config_attach(struct device *parent, void *match, void *au
 ///                             a submatch function (sdmmc_submatch)
 struct device *config_found_sm(struct device *parent, void *aux, cfprint_t print, cfmatch_t submatch)
 {
+	UTL_DEBUG(1, "START");
 	// check all members...
 	for (int i = 0; i < sizeof(my_cfdata) / sizeof(my_cfdata[0]); i++) {
 		if (!my_cfdata[i].cf_attach) continue;
@@ -72,6 +78,7 @@ struct device *config_found_sm(struct device *parent, void *aux, cfprint_t print
 			return config_attach(parent, &my_cfdata[i], aux, print);
 		}
 	}
+	UTL_ERR("Config not found. Returning null.");
 	return nullptr; // not found
 	/* ORIGINAL OPENBSD CODE:
 	void *match = config_search(submatch, parent, aux);
@@ -82,24 +89,50 @@ struct device *config_found_sm(struct device *parent, void *aux, cfprint_t print
 	*/
 }
 
+/// Calls deactivate, detach, and frees memory
 int config_detach(struct device *dev, int flags)
 {
-	UTL_CHK_PTR(dev, 1);
+	int ret = 0;
+	UTL_CHK_PTR(dev, EINVAL);
+	UTL_CHK_PTR(dev->dv_cfdata, EINVAL);
 
-	if (strcmp(dev->dv_xname, "sdmmc") != 0) {
-		UTL_ERR("Device is not sdmmc!");
-		return 1;
+	struct cfattach *cf_attach = dev->dv_cfdata->cf_attach;
+
+	UTL_DEBUG(1, "Detaching %s device", dev->dv_xname);
+
+	// call deactivate
+	ret = config_deactivate(dev);
+	if (ret == 0) {
+		// call detach
+		if (cf_attach && cf_attach->ca_detach)
+			ret = cf_attach->ca_detach(dev, flags);
+		else
+			ret = ENOTSUP;
 	}
 
-	// call detach
-	UTL_CHK_PTR(sdmmc_ca.ca_detach, 1);
-	sdmmc_ca.ca_detach(dev, flags);
-	// should free memory
-	return 1;
+	// TODO: Check OpenBSD code. It does more processing here...
+	
+	uint32_t devSize = (uint32_t) cf_attach->ca_devsize;
+	OSFree(dev, devSize, OSMT_DEFAULT);
+	return ret;
 }
 
 int config_activate_children(struct device *, int) {
 	return 0; // nothing to do?
+}
+
+static /* for now */
+int config_deactivate(struct device *dev)
+{
+	int rv = 0, oflags = dev->dv_flags;
+
+	if (dev->dv_flags & DVF_ACTIVE) {
+		dev->dv_flags &= ~DVF_ACTIVE;
+		rv = config_suspend(dev, DVACT_DEACTIVATE);
+		if (rv)
+			dev->dv_flags = oflags;
+	}
+	return rv;
 }
 
 void config_pending_incr(void) {
@@ -107,4 +140,19 @@ void config_pending_incr(void) {
 }
 void config_pending_decr(void) {
 	return; // nothing to do?
+}
+
+static /* for now */
+int config_suspend(struct device *dev, int act)
+{
+	struct cfattach *ca = dev->dv_cfdata->cf_attach;
+	int r;
+
+	// device_ref(dev);
+	if (ca->ca_activate)
+		r = (*ca->ca_activate)(dev, act);
+	else
+		r = config_activate_children(dev, act);
+	// device_unref(dev);
+	return (r);
 }
