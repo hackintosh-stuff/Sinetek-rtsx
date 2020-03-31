@@ -84,6 +84,7 @@ do { \
 #define rw_enter_write(a1) do {} while (0)
 #define rw_exit(a1) do {} while (0)
 
+// TODO: Implement using tsleep() ?
 #define tsleep_nsec(a1, a2, a3, a4) ((int)0) /* expects an expression */
 
 constexpr int cold = 1;

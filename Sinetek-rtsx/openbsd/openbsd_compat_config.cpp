@@ -42,6 +42,9 @@ static void *config_search(cfmatch_t fn, struct device *parent, void *aux)
 static struct device *config_attach(struct device *parent, void *match, void *aux, cfprint_t print) {
 	struct device *ret;
 	struct cfdata *this_cfdata = (struct cfdata *) match;
+	UTL_CHK_PTR(this_cfdata, nullptr);
+	UTL_CHK_PTR(this_cfdata->cf_attach, nullptr);
+
 	int32_t devSize = (int32_t) this_cfdata->cf_attach->ca_devsize;
 	// allocate memory (TODO: check that it is freed on detach)
 	ret = (struct device *) OSMalloc(devSize, OSMT_DEFAULT);
@@ -52,11 +55,14 @@ static struct device *config_attach(struct device *parent, void *match, void *au
 	UTL_CHK_PTR(this_cfdata->cf_driver, nullptr);
 	UTL_CHK_PTR(this_cfdata->cf_driver->cd_name, nullptr);
 
-	// set dv_xname (the only used attribute)
+	// set dv_xname
 	strlcpy(ret->dv_xname, this_cfdata->cf_driver->cd_name , sizeof(ret->dv_xname));
+	ret->dv_cfdata = this_cfdata; // used by config_detach
+	ret->dv_parent = parent; // parent device (is it used?)
 
 	// call attach (and activate?)
 	UTL_CHK_PTR(this_cfdata->cf_attach->ca_attach, nullptr);
+	UTL_DEBUG(1, "Calling ca_attach...");
 	this_cfdata->cf_attach->ca_attach(parent, (struct device *) ret, aux);
 
 	return (struct device *) ret;
@@ -72,9 +78,12 @@ struct device *config_found_sm(struct device *parent, void *aux, cfprint_t print
 	UTL_DEBUG(1, "START");
 	// check all members...
 	for (int i = 0; i < sizeof(my_cfdata) / sizeof(my_cfdata[0]); i++) {
+		UTL_DEBUG(1, "Trying my_cfdata[%d]...", i);
 		if (!my_cfdata[i].cf_attach) continue;
 
+		UTL_DEBUG(2, "Calling ca_match...");
 		if (my_cfdata[i].cf_attach->ca_match(parent, my_cfdata + i, aux)) {
+			UTL_DEBUG(1, "Match found. Calling config_attach...");
 			return config_attach(parent, &my_cfdata[i], aux, print);
 		}
 	}
