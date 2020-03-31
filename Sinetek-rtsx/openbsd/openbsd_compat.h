@@ -19,9 +19,11 @@ __END_DECLS
 #define _KERNEL // needed by some headers
 
 #include "openbsd_compat_types.h" // type definitions (must be included before any other openbsd_compat*)
+#include "openbsd_compat_bus_space.h" // bus_space_*
 #include "openbsd_compat_config.h" // config_*
 #include "openbsd_compat_dma.h" // DMA-related functions
 #include "openbsd_compat_queue.h" // SIMPLEQ -> STAILQ
+#include "openbsd_compat_spl.h" // spl*
 
 #ifndef UTL_THIS_CLASS
 #define UTL_THIS_CLASS ""
@@ -29,25 +31,6 @@ __END_DECLS
 #include "util.h"
 
 #if RTSX_USE_IOLOCK
-//#define splsdmmc(...) UTLsplsdmmc(sc->splsdmmc_rec_lock)
-#define splbio(...) UTLsplsdmmc(sc->splsdmmc_rec_lock)
-inline int UTLsplsdmmc(IORecursiveLock *l) {
-	IORecursiveLockLock(l);
-	/* UTL_DEBUG(2, "Locked splsdmmc_lock"); */
-	return 0;
-}
-
-#define splhigh() ({ \
-	/* UTL_DEBUG(2, "Locking splsdmmc_lock"); */ \
-	IORecursiveLockLock(sc->splsdmmc_rec_lock); \
-	0; \
-})
-
-#define splx(n) do { \
-	/* UTL_DEBUG(2, "Unlocking splsdmmc_lock"); */ \
-	IORecursiveLockUnlock(sc->splsdmmc_rec_lock); \
-} while (0)
-
 #define INFSLP 0 // -1?
 #define tlseep_nsec(a1, a2, a3, a4) do {} while(0)
 #endif // RTSX_USE_IOLOCK
@@ -136,24 +119,10 @@ static inline void *malloc(size_t size, int type, int flags) {
 static inline void free(void *addr, int type, int flags) {
 	_FREE(addr, type);
 }
-// check if they are microseconds or milliseconds!
+
 static inline void delay(unsigned int microseconds) {
 	IODelay(microseconds);
 }
-
-#undef READ4
-#define READ4(sc, reg) \
-({ \
-	uint32_t val; \
-	sc->memory_descriptor_->readBytes(reg, &val, 4); \
-	val; \
-})
-#undef WRITE4
-#define WRITE4(sc, reg, val) \
-do { \
-	uint32_t _val = val; \
-	sc->memory_descriptor_->writeBytes(reg, &_val, 4); \
-} while (0)
 
 #define RTSX_F_525A          0x20
 

@@ -1,5 +1,7 @@
 #include "openbsd_compat_dma.h"
 
+#include <sys/errno.h>
+#include <string.h> // bzero
 #include <IOKit/IOBufferMemoryDescriptor.h>
 #include <IOKit/IODMACommand.h>
 #include <IOKit/IOMemoryDescriptor.h> // IOMemoryMap
@@ -18,7 +20,7 @@ typedef struct {
 
 _bus_dma_tag _busDmaTag = { nullptr, nullptr };
 bus_space_tag_t gBusSpaceTag = {};
-bus_space_handle_t gBusSpaceHandle = {};
+//bus_space_handle_t gBusSpaceHandle = {};
 bus_dma_tag_t gBusDmaTag = (bus_dma_tag_t) &_busDmaTag;
 
 // bus_dmamap_create();         /* get a dmamap to load/unload          */
@@ -50,12 +52,12 @@ int
 bus_dmamap_create(bus_dma_tag_t tag, bus_size_t size, int nsegments, bus_size_t maxsegsz,
 		  bus_size_t boundary, int flags, bus_dmamap_t *dmamp) {
 	UTL_DEBUG(1, "START");
-	if (!dmamp) return kIOReturnBadArgument;
+	UTL_CHK_PTR(dmamp, EINVAL);
 
 	bus_dmamap_t ret = UTL_MALLOC(bus_dmamap);
-	if (!ret) return kIOReturnNoMemory;
+	UTL_CHK_PTR(ret, ENOMEM);
 
-	memset(ret, 0, sizeof(bus_dmamap));
+	bzero(ret, sizeof(bus_dmamap));
 	ret->_dm_size = size;
 	ret->_dm_segcnt = nsegments;
 	ret->_dm_maxsegsz = maxsegsz;
@@ -76,7 +78,7 @@ int
 bus_dmamap_load(bus_dma_tag_t tag, bus_dmamap_t dmam, void *buf, bus_size_t buflen, struct proc *p, int flags)
 {
 	UTL_DEBUG(1, "START");
-	return kIOReturnUnsupported;
+	return ENOTSUP;
 }
 
 void
@@ -102,11 +104,11 @@ bus_dmamem_alloc(bus_dma_tag_t tag, bus_size_t size, bus_size_t alignment, bus_s
 	UTL_DEBUG(1, "START");
 	if (nsegs != 1) return kIOReturnBadArgument; // only one supported for now
 	_bus_dma_tag *_tag = reinterpret_cast<_bus_dma_tag *>(tag);
-	UTL_CHK_PTR(_tag, kIOReturnBadArgument);
-	UTL_CHK_PTR(segs, kIOReturnBadArgument);
-	UTL_CHK_PTR(rsegs, kIOReturnBadArgument);
+	UTL_CHK_PTR(_tag, EINVAL);
+	UTL_CHK_PTR(segs, EINVAL);
+	UTL_CHK_PTR(rsegs, EINVAL);
 
-	if (_tag->memoryDescriptor) return kIOReturnUnsupported; // only one dma_alloc
+	if (_tag->memoryDescriptor) return ENOTSUP; // only one dma_alloc
 
 	_tag->memoryDescriptor =
 	IOBufferMemoryDescriptor::inTaskWithPhysicalMask(
@@ -116,7 +118,7 @@ bus_dmamem_alloc(bus_dma_tag_t tag, bus_size_t size, bus_size_t alignment, bus_s
 							 kIOMapInhibitCache,
 							 size,
 							 0x00000000ffffffffull);
-	if (!_tag->memoryDescriptor) return kIOReturnNoMemory;
+	if (!_tag->memoryDescriptor) return ENOMEM;
 
 	IOByteCount len;
 	auto addr = _tag->memoryDescriptor->getPhysicalSegment(0, &len);
@@ -155,23 +157,23 @@ int
 bus_dmamem_map(bus_dma_tag_t tag, bus_dma_segment_t *segs, int nsegs, size_t size, caddr_t *kvap, int flags)
 {
 	UTL_DEBUG(1, "START");
-	UTL_CHK_PTR(segs, kIOReturnBadArgument);
-	if (nsegs != 1) return kIOReturnUnsupported; // only one supported for now
+	UTL_CHK_PTR(segs, EINVAL);
+	if (nsegs != 1) return ENOTSUP; // only one supported for now
 	_bus_dma_tag *_tag = reinterpret_cast<_bus_dma_tag *>(tag);
-	UTL_CHK_PTR(_tag, kIOReturnBadArgument);
-	UTL_CHK_PTR(kvap, kIOReturnBadArgument);
+	UTL_CHK_PTR(_tag, EINVAL);
+	UTL_CHK_PTR(kvap, EINVAL);
 
-	if (!_tag->memoryDescriptor) return kIOReturnBadArgument;
-	if (_tag->memoryMap) return kIOReturnUnsupported;
+	if (!_tag->memoryDescriptor) return EINVAL;
+	if (_tag->memoryMap) return ENOTSUP;
 
 	_tag->memoryMap = _tag->memoryDescriptor->map();
 	if (!_tag->memoryMap) {
 		UTL_ERR("memoryDescriptor->map() returned null!");
-		return kIOReturnNoMemory;
+		return ENOMEM;
 	}
 
 	*kvap = (caddr_t) _tag->memoryMap->getAddress(); // getVirtualAddress();
-	return kIOReturnSuccess;
+	return 0;
 }
 
 void

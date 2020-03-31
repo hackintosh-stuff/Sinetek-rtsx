@@ -97,7 +97,14 @@ do { \
 } while (0)
 #else // RTSX_USE_IOMALLOC
 #define UTL_MALLOC(TYPE) new TYPE
-#define UTL_FREE(ptr, TYPE) delete ptr
+#define UTL_FREE(ptr, TYPE) \
+do { \
+	if (ptr) { \
+		delete ptr; \
+	} else { \
+		UTL_ERR("Tried to free null pointer (%s) of type %s", #ptr, #TYPE); \
+	} \
+} while (0)
 #endif // RTSX_USE_IOMALLOC
 
 static inline AbsoluteTime timo2AbsoluteTimeDeadline(int timo) {

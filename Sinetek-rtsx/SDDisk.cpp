@@ -6,6 +6,7 @@
 
 #include "SDDisk.hpp"
 #include "Sinetek_rtsx.hpp"
+#include "rtsxvar.h" // rtsx_softc
 #include "sdmmcvar.h" // sdmmc_mem_read_block
 #include "device.h"
 
@@ -31,10 +32,19 @@ bool SDDisk::init(struct sdmmc_softc *sc_sdmmc, OSDictionary* properties)
 	if (super::init(properties) == false)
 		return false;
 
-	util_lock_ = nullptr;
+	util_lock_ = NULL;
+	sdmmc_softc_ = sc_sdmmc;
 
 	UTL_DEBUG(0, "END");
 	return true;
+}
+
+// TODO: Is this even called?
+void SDDisk::free()
+{
+	UTL_DEBUG(1, "START");
+	sdmmc_softc_ = NULL;
+	super::free();
 }
 
 bool SDDisk::attach(IOService* provider)
@@ -43,14 +53,19 @@ bool SDDisk::attach(IOService* provider)
 	if (super::attach(provider) == false)
 		return false;
 
-	provider_ = OSDynamicCast(rtsx_softc, provider);
+	if (provider_) {
+		UTL_ERR("provider should be null, but it's not!");
+	}
+	provider_ = OSDynamicCast(Sinetek_rtsx, provider);
 	if (provider_ == NULL)
 		return false;
 
 	provider_->retain();
 
-	num_blocks_ = provider_->sc_fn0->csd.capacity;
-	blk_size_   = provider_->sc_fn0->csd.sector_size;
+	UTL_CHK_PTR(sdmmc_softc_, false);
+	UTL_CHK_PTR(sdmmc_softc_->sc_fn0, false);
+	num_blocks_ = sdmmc_softc_->sc_fn0->csd.capacity;
+	blk_size_   = sdmmc_softc_->sc_fn0->csd.sector_size;
 	util_lock_ = IOLockAlloc();
 
 	printf("rtsx: attaching SDDisk, num_blocks:%d  blk_size:%d\n",
@@ -74,13 +89,8 @@ void SDDisk::detach(IOService* provider)
 
 IOReturn SDDisk::doEjectMedia(void)
 {
-	void rtsx_card_eject(struct rtsx_softc *);
 	UTL_DEBUG(0, "START");
-	IOLog("%s: RAMDISK: doEjectMedia.", __func__);
-
-	// XXX signal intent further down the stack?
-	// syscl - implement eject routine here
-	rtsx_card_eject(provider_);
+	provider_->cardEject();
 	UTL_DEBUG(0, "END");
 	return kIOReturnSuccess;
 }
@@ -93,7 +103,7 @@ IOReturn SDDisk::doFormatMedia(UInt64 byteCapacity)
 
 UInt32 SDDisk::GetBlockCount() const
 {
-	UTL_DEBUG(0, "START");
+	UTL_DEBUG(0, "Returning %u blocks", num_blocks_);
 	return num_blocks_;
 }
 
@@ -258,14 +268,17 @@ void read_task_impl_(void *_args)
 	UTL_CHK_PTR(args->buffer,);
 	UTL_CHK_PTR(args->that,);
 	UTL_CHK_PTR(args->that->provider_,);
-	UTL_CHK_PTR(args->that->provider_->sc_fn0,);
+	UTL_CHK_PTR(args->that->provider_->rtsx_softc_original_,);
+	UTL_CHK_PTR(args->that->provider_->rtsx_softc_original_->sdmmc,);
+	auto sdmmc = (struct sdmmc_softc *) args->that->provider_->rtsx_softc_original_->sdmmc;
+	UTL_CHK_PTR(sdmmc->sc_fn0,);
 	UTL_DEBUG(0, "START (block = %u nblks = %u blksize = %u)",
 		  static_cast<unsigned>(args->block),
 		  static_cast<unsigned>(args->nblks),
 		  args->that->blk_size_);
 
 	printf("read_task_impl_  sz %llu\n", args->nblks * args->that->blk_size_);
-	printf("sf->csd.sector_size %d\n", args->that->provider_->sc_fn0->csd.sector_size);
+	printf("sf->csd.sector_size %d\n", sdmmc->sc_fn0->csd.sector_size);
 
 
 	actualByteCount = args->nblks * args->that->blk_size_;
@@ -293,7 +306,7 @@ void read_task_impl_(void *_args)
 		//unsigned int would = args->block + b;
 #if RTSX_USE_WRITEBYTES
 		// This is a safer version
-		error = sdmmc_mem_read_block(args->that->provider_->sc_fn0,
+		error = sdmmc_mem_read_block(sdmmc->sc_fn0,
 					     static_cast<int>(args->block + b),
 					     buf, 512);
 		if (!error) {
@@ -398,10 +411,10 @@ IOReturn SDDisk::doAsyncReadWrite(IOMemoryDescriptor *buffer,
 	auto newTask = UTL_MALLOC(sdmmc_task); // will be deleted after processed
 	if (!newTask) return kIOReturnNoMemory;
 	sdmmc_init_task(newTask, read_task_impl_, bioargs);
-	sdmmc_add_task(provider_, newTask);
+	sdmmc_add_task(sdmmc_softc_, newTask);
 #else
 	sdmmc_init_task(&provider_->read_task_, read_task_impl_, bioargs);
-	sdmmc_add_task(provider_, &provider_->read_task_);
+	sdmmc_add_task(sdmmc_softc_, &provider_->read_task_);
 #endif
 
 	IOLockUnlock(util_lock_);

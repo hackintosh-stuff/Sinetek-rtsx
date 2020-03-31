@@ -69,12 +69,10 @@
 #define	RTSX_DMA_DATA_BUFSIZE	MAXPHYS
 #define	RTSX_ADMA_DESC_SIZE	(sizeof(uint64_t) * SDMMC_MAXNSEGS)
 
-#ifndef __APPLE__
 #define READ4(sc, reg)							\
 	(bus_space_read_4((sc)->iot, (sc)->ioh, (reg)))
 #define WRITE4(sc, reg, val)						\
 	bus_space_write_4((sc)->iot, (sc)->ioh, (reg), (val))
-#endif
 
 #define	RTSX_READ(sc, reg, val) 				\
 	do { 							\
@@ -186,16 +184,17 @@ rtsx_attach(struct rtsx_softc *sc, bus_space_tag_t iot,
 	u_int32_t sdio_cfg;
 	int rsegs;
 
-#ifndef __APPLE__
 	sc->iot = iot;
 	sc->ioh = ioh;
-#endif
 	sc->dmat = dmat;
 	sc->flags = flags;
 
 	UTL_DEBUG(1, "Calling rtsx_init...");
-	if (rtsx_init(sc, 1))
+	if (rtsx_init(sc, 1)) {
+		UTL_ERR("rtsx_init failed!");
 		return 1;
+	}
+	UTL_DEBUG(1, "rtsx_init returned");
 
 	if (rtsx_read_cfg(sc, 0, RTSX_SDIOCFG_REG, &sdio_cfg) == 0) {
 		if ((sdio_cfg & RTSX_SDIOCFG_SDIO_ONLY) ||

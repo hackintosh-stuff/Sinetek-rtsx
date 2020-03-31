@@ -170,13 +170,13 @@ struct sdmmc_function {
 /*
  * Structure describing a single SD/MMC/SDIO card slot.
  */
-#if __APPLE__ // TODO: Inherit somehow?
-struct sdmmc_softc_original {
-#else
 struct sdmmc_softc {
-#endif
 	struct device sc_dev;		/* base device */
+#if __APPLE__ // TODO: This is a provisional change. Revert back later.
+#define DEVNAME(sc)	"sdmmc"
+#else
 #define DEVNAME(sc)	((sc)->sc_dev.dv_xname)
+#endif
 	sdmmc_chipset_tag_t sct;	/* host controller chipset tag */
 	sdmmc_chipset_handle_t sch;	/* host controller chipset handle */
 

@@ -29,11 +29,7 @@
 /* Number of registers to save for suspend/resume in terms of their ranges. */
 #define RTSX_NREG ((0XFDAE - 0XFDA0) + (0xFD69 - 0xFD32) + (0xFE34 - 0xFE20))
 
-#if __APPLE__ // TODO: Inherit somehow?
-struct rtsx_softc_original {
-#else
 struct rtsx_softc {
-#endif
 	struct device	sc_dev;
 	struct device	*sdmmc;		/* generic SD/MMC device */
 	bus_space_tag_t	iot;		/* host register set tag */

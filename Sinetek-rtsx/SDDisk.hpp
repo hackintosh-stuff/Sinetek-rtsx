@@ -3,6 +3,9 @@
 #include <IOKit/storage/IOBlockStorageDevice.h>
 #include "Sinetek_rtsx.hpp"
 
+// Forward declaration
+struct rtsx_softc;
+
 class SDDisk : public IOBlockStorageDevice
 {
 	OSDeclareDefaultStructors(SDDisk)
@@ -10,14 +13,15 @@ class SDDisk : public IOBlockStorageDevice
 	friend void read_task_impl_(void *arg);
 
 private:
-	rtsx_softc *		provider_;
+	Sinetek_rtsx 			*provider_;
 	IOLock *			util_lock_;
 	uint32_t			num_blocks_;
 	uint32_t			blk_size_;
+	sdmmc_softc			*sdmmc_softc_; // TODO: where is this initialized?
 
 public:
-	virtual bool		init(struct sdmmc_softc *sc_sdmmc,
-				     OSDictionary* properties = 0);
+	virtual bool		init(struct sdmmc_softc *sc_sdmmc, OSDictionary* properties = 0);
+	virtual void		free() override;
 
 	virtual bool		attach(IOService* provider) override;
 	virtual void		detach(IOService* provider) override;
