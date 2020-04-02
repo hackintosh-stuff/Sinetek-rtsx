@@ -26,8 +26,15 @@ OSDefineMetaClassAndStructors(SDDisk, IOBlockStorageDevice)
 /// IOBlockStorageDriver, because it's not the same (IOATABlockStorageDriver is the provider of IOATABlockStorageDriver,
 /// but IOBlockStorageDriver is the CLIENT of IOBlockStorageDevice). This one DOES forward doAsyncReadWrite.
 
+#if DEBUG || RTSX_DEBUG_RETAIN_COUNT
+SDDisk *SDDisk::GLOBAL_INSTANCE = nullptr;
+#endif
+
 bool SDDisk::init(struct sdmmc_softc *sc_sdmmc, OSDictionary* properties)
 {
+#if DEBUG || RTSX_DEBUG_RETAIN_COUNT
+	SDDisk::GLOBAL_INSTANCE = this;
+#endif
 	UTL_DEBUG(0, "START");
 	if (super::init(properties) == false)
 		return false;
@@ -45,6 +52,9 @@ void SDDisk::free()
 	UTL_DEBUG(1, "START");
 	sdmmc_softc_ = NULL;
 	super::free();
+#if DEBUG || RTSX_DEBUG_RETAIN_COUNT
+	SDDisk::GLOBAL_INSTANCE = nullptr;
+#endif
 }
 
 bool SDDisk::attach(IOService* provider)

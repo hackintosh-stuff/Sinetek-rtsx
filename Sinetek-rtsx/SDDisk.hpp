@@ -20,6 +20,9 @@ private:
 	sdmmc_softc			*sdmmc_softc_; // TODO: where is this initialized?
 
 public:
+#if DEBUG || RTSX_DEBUG_RETAIN_COUNT
+	static SDDisk *GLOBAL_INSTANCE;
+#endif
 	virtual bool		init(struct sdmmc_softc *sc_sdmmc, OSDictionary* properties = 0);
 	virtual void		free() override;
 

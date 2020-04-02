@@ -29,6 +29,19 @@ enum
 	kPowerStateNormal   = 2,
 	kPowerStateCount
 };
+
+#if DEBUG || RTSX_DEBUG_RETAIN_COUNT
+Sinetek_rtsx *Sinetek_rtsx::GLOBAL_INSTANCE = nullptr;
+
+bool Sinetek_rtsx::terminate(IOOptionBits opt) {
+	UTL_DEBUG(1, "Calling super::terminate()...");
+	auto ret = super::terminate(opt);
+	UTL_DEBUG(1, "super::terminate() returns %d", (int) ret);
+	return ret;
+}
+
+#endif
+
 //
 // syscl - Define usable power states
 //
@@ -39,7 +52,11 @@ static IOPMPowerState ourPowerStates[kPowerStateCount] =
 	{ 1,kIOPMDeviceUsable,IOPMPowerOn,IOPMPowerOn,0,0,0,0,0,0,0,0 }
 };
 
+#if !RTSX_DISABLE_INIT
 bool Sinetek_rtsx::init(OSDictionary *dictionary) {
+#if DEBUG || RTSX_DEBUG_RETAIN_COUNT
+//	Sinetek_rtsx::GLOBAL_INSTANCE = this;
+#endif
 	if (!super::init()) return false;
 	UTL_DEBUG(1, "START");
 
@@ -51,18 +68,29 @@ bool Sinetek_rtsx::init(OSDictionary *dictionary) {
 	UTL_DEBUG(1, "END");
 	return true;
 }
+#endif
+
 void Sinetek_rtsx::free() {
 	UTL_DEBUG(1, "START");
 	// deallocate memory
 	UTL_FREE(rtsx_softc_original_, struct rtsx_softc);
-	UTL_DEBUG(1, "END");
 
 	super::free();
-	UTL_DEBUG(1, "END (super too)");
+#if DEBUG || RTSX_DEBUG_RETAIN_COUNT
+	Sinetek_rtsx::GLOBAL_INSTANCE = nullptr;
+#endif
+	UTL_DEBUG(1, "END");
 }
 
 bool Sinetek_rtsx::start(IOService *provider)
 {
+#if RTSX_DISABLE_INIT
+	// vvv THIS SHOULD BE DONE IN INIT()
+	Sinetek_rtsx::GLOBAL_INSTANCE = this;
+	rtsx_softc_original_ = UTL_MALLOC(struct rtsx_softc);
+	// ^^^ THIS SHOULD BE DONE IN INIT()
+#endif
+
 	UTL_DEBUG(1, "START");
 	if (!super::start(provider))
 		return false;
@@ -110,7 +138,9 @@ void Sinetek_rtsx::stop(IOService *provider)
 	} else {
 		UTL_ERR("workloop_ is null");
 	}
+#if !RTSX_DISABLE_POWER
 	PMstop();
+#endif
 
 	super::stop(provider);
 	UTL_LOG("Driver stopped.");
@@ -142,16 +172,22 @@ void Sinetek_rtsx::rtsx_pci_attach()
 	/* Enable the device */
 	provider_->setBusMasterEnable(true);
 
+#if !RTSX_DISABLE_POWER
 	/* syscl - Power up the device */
+	UTL_DEBUG(2, "Before PMinit");
 	PMinit();
 
 	// join into the power plane
+	UTL_DEBUG(2, "Before joinPMtree");
 	provider_->joinPMtree(this);
+	UTL_DEBUG(2, "After joinPMtree");
 
 	if (registerPowerDriver(this, ourPowerStates, kPowerStateCount) != IOPMNoErr)
 	{
-		IOLog("%s: could not register state.\n", __func__);
+		UTL_ERR("Could not register state.");
 	}
+	UTL_DEBUG(2, "After registerPowerDriver");
+#endif
 
 	/* Map device memory with register. */
 	device_id = provider_->extendedConfigRead16(kIOPCIConfigDeviceID);
@@ -233,7 +269,7 @@ void Sinetek_rtsx::rtsx_pci_detach()
 #endif // RTSX_USE_IOLOCK
 }
 
-
+#if !RTSX_DISABLE_POWER
 // TODO: Seems like this is wrong. Power states should match those supported by the OpenBSD driver.
 // TODO: Review this method and power in general.
 // TODO: Be careful because this is called from a different thread, (in parallel with start())
@@ -268,6 +304,7 @@ done:
 
 	return ret;
 }
+#endif
 
 void Sinetek_rtsx::prepare_task_loop()
 {
@@ -309,12 +346,6 @@ void Sinetek_rtsx::destroy_task_loop()
 	task_loop_ = nullptr;
 #endif
 }
-
-/*
- * Takes a task off the list, executes it, and then
- * deletes that same task.
- */
-extern auto sdmmc_del_task(struct sdmmc_task *task)		-> void;
 
 void Sinetek_rtsx::task_execute_one_impl_(OSObject *target, IOTimerEventSource *sender)
 {

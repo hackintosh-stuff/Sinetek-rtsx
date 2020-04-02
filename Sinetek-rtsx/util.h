@@ -6,6 +6,23 @@
 #include <IOKit/IOLib.h> // IOSleep
 #include <IOKit/IOMemoryDescriptor.h> // IOMemoryDescriptor
 
+#if DEBUG || RTSX_DEBUG_RETAIN_COUNT
+#include "SDDisk.hpp"
+#include "Sinetek_rtsx.hpp"
+#define RTSX_UTL_LOG_RETAIN_FMT "[Sinetek_rtsx=%3d SDDisk=%3d] "
+#define RTSX_UTL_LOG_RETAIN_FMT_VAR \
+	Sinetek_rtsx::GLOBAL_INSTANCE ? Sinetek_rtsx::GLOBAL_INSTANCE->getRetainCount() : -99, \
+	SDDisk::GLOBAL_INSTANCE ? SDDisk::GLOBAL_INSTANCE->getRetainCount() : -99
+inline void UTL_LOG_RETAIN() {
+	os_log(OS_LOG_DEFAULT, "Retain: " RTSX_UTL_LOG_RETAIN_FMT "\n",
+	       RTSX_UTL_LOG_RETAIN_FMT_VAR);
+}
+#else
+#define RTSX_UTL_LOG_RETAIN_FMT
+#define RTSX_UTL_LOG_RETAIN_FMT_VAR
+#define UTL_LOG_RETAIN(...) do {} while (0)
+#endif
+
 #ifndef UTL_THIS_CLASS
 #error UTL_THIS_CLASS must be defined before including this file (i.e.: #define UTL_THIS_CLASS "SDDisk::").
 #endif
@@ -15,12 +32,16 @@
 #endif
 
 #define UTL_ERR(fmt, ...) do { \
-	os_log_fault(OS_LOG_DEFAULT, "rtsx: %12s%-22s: " fmt "\n", UTL_THIS_CLASS, __func__, ##__VA_ARGS__); \
+	os_log_fault(OS_LOG_DEFAULT, "rtsx: " RTSX_UTL_LOG_RETAIN_FMT "%12s%-22s: " fmt "\n", \
+		RTSX_UTL_LOG_RETAIN_FMT_VAR, \
+		UTL_THIS_CLASS, __func__, ##__VA_ARGS__); \
 	if (UTL_LOG_DELAY_MS) IOSleep(UTL_LOG_DELAY_MS); /* Wait for log to appear... */ \
 } while (0)
 
 #define UTL_LOG(fmt, ...) do { \
-	os_log(OS_LOG_DEFAULT, "rtsx: %12s%-22s: " fmt "\n", UTL_THIS_CLASS, __func__, ##__VA_ARGS__); \
+	os_log(OS_LOG_DEFAULT, "rtsx: " RTSX_UTL_LOG_RETAIN_FMT "%12s%-22s: " fmt "\n", \
+		RTSX_UTL_LOG_RETAIN_FMT_VAR, \
+		UTL_THIS_CLASS, __func__, ##__VA_ARGS__); \
 	if (UTL_LOG_DELAY_MS) IOSleep(UTL_LOG_DELAY_MS); /* Wait for log to appear... */ \
 } while (0)
 
@@ -41,7 +62,9 @@
 #define UTL_DEBUG(lvl, fmt, ...) \
 do { \
 	if (lvl < UTL_DEBUG_LEVEL) { \
-		os_log(OS_LOG_DEFAULT, "rtsx: %12s%-22s: " fmt "\n", UTL_THIS_CLASS, __func__, ##__VA_ARGS__); \
+		os_log(OS_LOG_DEFAULT, "rtsx: " RTSX_UTL_LOG_RETAIN_FMT "%12s%-22s: " fmt "\n", \
+		RTSX_UTL_LOG_RETAIN_FMT_VAR, \
+		UTL_THIS_CLASS, __func__, ##__VA_ARGS__); \
 		if (UTL_LOG_DELAY_MS) IOSleep(UTL_LOG_DELAY_MS); /* Wait for log to appear... */ \
 	} \
 } while (0)
