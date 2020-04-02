@@ -28,7 +28,8 @@ struct Sinetek_rtsx : public IOService
 	OSDeclareDefaultStructors(Sinetek_rtsx);
 
 public:
-	virtual bool init(OSDictionary *dictionary) override;
+	// implementing init() causes the kext not to unload!
+	virtual bool init(OSDictionary *dictionary = nullptr) override;
 	virtual void free() override;
 
 	virtual bool start(IOService * provider) override;

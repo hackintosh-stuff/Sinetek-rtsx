@@ -29,6 +29,7 @@ enum
 	kPowerStateNormal   = 2,
 	kPowerStateCount
 };
+
 //
 // syscl - Define usable power states
 //
@@ -51,14 +52,14 @@ bool Sinetek_rtsx::init(OSDictionary *dictionary) {
 	UTL_DEBUG(1, "END");
 	return true;
 }
+
 void Sinetek_rtsx::free() {
 	UTL_DEBUG(1, "START");
 	// deallocate memory
 	UTL_FREE(rtsx_softc_original_, struct rtsx_softc);
-	UTL_DEBUG(1, "END");
 
 	super::free();
-	UTL_DEBUG(1, "END (super too)");
+	UTL_DEBUG(1, "END");
 }
 
 bool Sinetek_rtsx::start(IOService *provider)
@@ -152,15 +153,19 @@ void Sinetek_rtsx::rtsx_pci_attach()
 	provider_->setBusMasterEnable(true);
 
 	/* syscl - Power up the device */
+	UTL_DEBUG(2, "Before PMinit");
 	PMinit();
 
 	// join into the power plane
+	UTL_DEBUG(2, "Before joinPMtree");
 	provider_->joinPMtree(this);
+	UTL_DEBUG(2, "After joinPMtree");
 
 	if (registerPowerDriver(this, ourPowerStates, kPowerStateCount) != IOPMNoErr)
 	{
-		IOLog("%s: could not register state.\n", __func__);
+		UTL_ERR("Could not register state.");
 	}
+	UTL_DEBUG(2, "After registerPowerDriver");
 
 	/* Map device memory with register. */
 	device_id = provider_->extendedConfigRead16(kIOPCIConfigDeviceID);
@@ -242,7 +247,6 @@ void Sinetek_rtsx::rtsx_pci_detach()
 #endif // RTSX_USE_IOLOCK
 }
 
-
 // TODO: Seems like this is wrong. Power states should match those supported by the OpenBSD driver.
 // TODO: Review this method and power in general.
 // TODO: Be careful because this is called from a different thread, (in parallel with start())
@@ -318,12 +322,6 @@ void Sinetek_rtsx::destroy_task_loop()
 	task_loop_ = nullptr;
 #endif
 }
-
-/*
- * Takes a task off the list, executes it, and then
- * deletes that same task.
- */
-extern auto sdmmc_del_task(struct sdmmc_task *task)		-> void;
 
 void Sinetek_rtsx::task_execute_one_impl_(OSObject *target, IOTimerEventSource *sender)
 {
