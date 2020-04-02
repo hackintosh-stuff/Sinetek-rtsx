@@ -22,6 +22,7 @@ __END_DECLS
 #include "openbsd_compat_bus_space.h" // bus_space_*
 #include "openbsd_compat_config.h" // config_*
 #include "openbsd_compat_dma.h" // DMA-related functions
+#include "openbsd_compat_kthread.h" // kthread_*
 #include "openbsd_compat_queue.h" // SIMPLEQ -> STAILQ
 #include "openbsd_compat_spl.h" // spl*
 
@@ -95,14 +96,6 @@ extern int hz;
 #include "rtsxreg.h"
 #include "rtsxvar.h"
 #include "Sinetek_rtsx.hpp"
-
-
-// kthread*
-#define kthread_create(a1, a2, a3, a4) (0) /* expects an expression */
-#define kthread_create_deferred(a1, a2) do {} while (0)
-#define kthread_exit(a1) do {} while (0)
-
-//#define sdmmc_needs_discover(a1) ((void)0)
 
 #define be32toh OSSwapBigToHostInt32
 #define betoh32 OSSwapBigToHostInt32

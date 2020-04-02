@@ -12,6 +12,7 @@
 		9319F491243081B600A4921E /* openbsd_compat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9319F48D243081B600A4921E /* openbsd_compat.cpp */; };
 		9319F492243081B600A4921E /* openbsd_compat_dma.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9319F48E243081B600A4921E /* openbsd_compat_dma.cpp */; };
 		932FC7BF2431EFE700B1A5D0 /* openbsd_compat_config.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 932FC7BD2431EFE700B1A5D0 /* openbsd_compat_config.cpp */; };
+		9337302A2435ACC700254E78 /* openbsd_compat_kthread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 933730282435ACC700254E78 /* openbsd_compat_kthread.cpp */; };
 		93807805243383E00014C724 /* openbsd_compat_bus_space.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 93807803243383E00014C724 /* openbsd_compat_bus_space.cpp */; };
 		9E11DE591E4CB19C00AF36C8 /* SDDisk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9E11DE571E4CB19C00AF36C8 /* SDDisk.cpp */; };
 		9E11DE5A1E4CB19C00AF36C8 /* SDDisk.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 9E11DE581E4CB19C00AF36C8 /* SDDisk.hpp */; };
@@ -32,6 +33,8 @@
 		932FC7BD2431EFE700B1A5D0 /* openbsd_compat_config.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = openbsd_compat_config.cpp; sourceTree = "<group>"; };
 		932FC7BE2431EFE700B1A5D0 /* openbsd_compat_config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = openbsd_compat_config.h; sourceTree = "<group>"; };
 		932FC7C12432230000B1A5D0 /* openbsd_compat_queue.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = openbsd_compat_queue.h; sourceTree = "<group>"; };
+		933730282435ACC700254E78 /* openbsd_compat_kthread.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = openbsd_compat_kthread.cpp; sourceTree = "<group>"; };
+		933730292435ACC700254E78 /* openbsd_compat_kthread.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = openbsd_compat_kthread.h; sourceTree = "<group>"; };
 		9355866F242211D600B8B0B9 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = "<none>"; };
 		93576F8524263CF3006F1A33 /* openbsd_compat.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = openbsd_compat.h; sourceTree = "<group>"; };
 		935884C92421D21500E781A7 /* util.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = util.h; sourceTree = "<group>"; };
@@ -84,6 +87,8 @@
 				93807803243383E00014C724 /* openbsd_compat_bus_space.cpp */,
 				93807804243383E00014C724 /* openbsd_compat_bus_space.h */,
 				939C544424345486007E0DF6 /* openbsd_compat_spl.h */,
+				933730282435ACC700254E78 /* openbsd_compat_kthread.cpp */,
+				933730292435ACC700254E78 /* openbsd_compat_kthread.h */,
 			);
 			path = openbsd;
 			sourceTree = "<group>";
@@ -225,6 +230,7 @@
 				9E9EEDBE1E4C869F00E640DB /* sdmmc_cis.cpp in Sources */,
 				9E9EEDC31E4C927D00E640DB /* sdmmc_mem.cpp in Sources */,
 				9319F492243081B600A4921E /* openbsd_compat_dma.cpp in Sources */,
+				9337302A2435ACC700254E78 /* openbsd_compat_kthread.cpp in Sources */,
 				9E9EEDB81E4C6EC100E640DB /* rtsx.cpp in Sources */,
 				932FC7BF2431EFE700B1A5D0 /* openbsd_compat_config.cpp in Sources */,
 				9E9EEDC51E4C98AC00E640DB /* sdmmc.cpp in Sources */,
