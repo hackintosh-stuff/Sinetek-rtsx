@@ -76,11 +76,12 @@ bool Sinetek_rtsx::start(IOService *provider)
 	provider_ = OSDynamicCast(IOPCIDevice, provider);
 	if (!provider_)
 	{
-		printf("IOPCIDevice cannot be cast.\n");
-		return false;
+		UTL_ERR("IOPCIDevice cannot be cast.");
+		goto ERROR;
 	}
 
 	workloop_ = getWorkLoop();
+	if (!workloop_) goto ERROR;
 	/*
 	 * Enable memory response from the card.
 	 */
@@ -95,8 +96,16 @@ bool Sinetek_rtsx::start(IOService *provider)
 #else
 		"release");
 #endif
-	UTL_DEBUG(1, "END");
 	return true;
+ERROR:
+	workloop_ = NULL;
+	if (splsdmmc_rec_lock)
+		IORecursiveLockFree(splsdmmc_rec_lock);
+	if (intr_status_lock)
+		IOLockFree(intr_status_lock);
+
+	UTL_DEBUG(1, "END");
+	return false;
 }
 
 // WATCH OUT: stop() may not be called if start() fails!
