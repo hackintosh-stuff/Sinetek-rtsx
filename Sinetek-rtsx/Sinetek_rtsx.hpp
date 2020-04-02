@@ -18,9 +18,6 @@
 
 #include "sdmmcvar.h"
 
-#define RTSX_DISABLE_POWER 1
-#define RTSX_DISABLE_INIT 1
-
 // forward declaration
 struct rtsx_softc;
 
@@ -31,14 +28,8 @@ struct Sinetek_rtsx : public IOService
 	OSDeclareDefaultStructors(Sinetek_rtsx);
 
 public:
-#if DEBUG || RTSX_DEBUG_RETAIN_COUNT
-	static Sinetek_rtsx *GLOBAL_INSTANCE;
-	bool terminate(IOOptionBits opt) override;
-#endif
-#if !RTSX_DISABLE_INIT
 	// implementing init() causes the kext not to unload!
 	virtual bool init(OSDictionary *dictionary = nullptr) override;
-#endif
 	virtual void free() override;
 
 	virtual bool start(IOService * provider) override;
@@ -46,10 +37,8 @@ public:
 
 	void rtsx_pci_attach();
 	void rtsx_pci_detach();
-#if !RTSX_DISABLE_POWER
 	/* syscl - Power Management Support */
 	virtual IOReturn setPowerState(unsigned long powerStateOrdinal, IOService * policyMaker) override;
-#endif
 
 	void blk_attach();
 	void blk_detach();
