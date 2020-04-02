@@ -9,9 +9,9 @@ CLASS_NAME="Sinetek_rtsx"
 sync
 
 if [ $# -eq 1 -a "$1" = "-b" ]; then
-	sudo kextunload -b "$BUNDLE_ID" -v 4
+	sudo kextunload -b "$BUNDLE_ID"
 elif [ $# -eq 1 -a "$1" = "-c" ]; then
-	sudo kextunload -c "$CLASS_NAME" -v 4
+	sudo kextunload -c "$CLASS_NAME" -v 1
 else
-	sudo kextunload "$KEXT" -v 4
+	sudo kextunload "$KEXT"
 fi
