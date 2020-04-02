@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LOG_ARGS="--predicate 'processID == 0 AND sender == \"Sinetek-rtsx\"' --style compact"
+LOG_ARGS="--predicate 'processID == 0 AND sender == \"Sinetek-rtsx\"' --style compact --level debug"
 
 if [ $# -ge 1 -a "$1" = "show" ]; then
 	eval log show $LOG_ARGS
