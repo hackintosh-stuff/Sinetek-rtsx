@@ -132,7 +132,9 @@ static void trampoline_intr(OSObject *ih, IOInterruptEventSource *ies, int count
 	/* go to isr handler */
 	auto self = OSDynamicCast(Sinetek_rtsx, ih);
 	if (self && self->rtsx_softc_original_)
-		rtsx_intr(self->rtsx_softc_original_);
+		::rtsx_intr(self->rtsx_softc_original_);
+	else
+		UTL_ERR("Object received is not a Sinetek_rtsx!");
 }
 
 void Sinetek_rtsx::rtsx_pci_attach()
