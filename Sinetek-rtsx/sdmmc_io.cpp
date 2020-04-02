@@ -247,6 +247,8 @@ sdmmc_io_function_enable(struct sdmmc_function *sf)
 	rv |= (1<<sf->number);
 	sdmmc_io_write_1(sf0, SD_IO_CCCR_FN_ENABLE, rv);
 
+	// TODO: Implement this one-second timer
+	printf("IMPLEMENT THIS!!!!!!\n");
 	while (!sdmmc_io_function_ready(sf) && retry-- > 0)
 		tsleep_nsec(&lbolt, PPAUSE, "pause", INFSLP);
 	return (retry >= 0) ? 0 : ETIMEDOUT;

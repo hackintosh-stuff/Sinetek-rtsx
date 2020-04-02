@@ -69,7 +69,7 @@ int	sdmmc_ioctl(struct device *, u_long, caddr_t);
 #endif
 
 #ifdef SDMMC_DEBUG
-int sdmmcdebug = 0;
+int sdmmcdebug = 1;
 extern int sdhcdebug;	/* XXX should have a sdmmc_chip_debug() function */
 void sdmmc_dump_command(struct sdmmc_softc *, struct sdmmc_command *);
 #define DPRINTF(n,s)	do { if ((n) <= sdmmcdebug) printf s; } while (0)
@@ -236,6 +236,7 @@ sdmmc_task_thread(void *arg)
 	int s;
 
 restart:
+	UTL_DEBUG(1, "Calling sdmmc_needs_discover...");
 	sdmmc_needs_discover(&sc->sc_dev);
 
 	s = splsdmmc();
@@ -243,10 +244,14 @@ restart:
 		for (task = TAILQ_FIRST(&sc->sc_tskq); task != NULL;
 		     task = TAILQ_FIRST(&sc->sc_tskq)) {
 			splx(s);
+			UTL_DEBUG(1, "Calling sdmmc_del_task...");
 			sdmmc_del_task(task);
+			UTL_DEBUG(1, "Calling func...");
 			task->func(task->arg);
+			UTL_DEBUG(1, "func returns");
 			s = splsdmmc();
 		}
+		UTL_DEBUG(1, "Calling tsleep_nsec...");
 		tsleep_nsec(&sc->sc_tskq, PWAIT, "mmctsk", INFSLP);
 	}
 	splx(s);
@@ -607,7 +612,11 @@ sdmmc_delay(u_int usecs)
 	int nticks = usecs / (1000000 / hz);
 
 	if (!cold && nticks > 0)
+#if __APPLE__
+		tsleep((void *)&sdmmc_delay, PWAIT, "mmcdly", nticks);
+#else
 		tsleep(&sdmmc_delay, PWAIT, "mmcdly", nticks);
+#endif
 	else
 		delay(usecs);
 }

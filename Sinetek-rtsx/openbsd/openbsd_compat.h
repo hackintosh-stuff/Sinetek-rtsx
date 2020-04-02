@@ -25,6 +25,7 @@ __END_DECLS
 #include "openbsd_compat_kthread.h" // kthread_*
 #include "openbsd_compat_queue.h" // SIMPLEQ -> STAILQ
 #include "openbsd_compat_spl.h" // spl*
+#include "openbsd_compat_tsleep.h" // tsleep_nsec
 
 #ifndef UTL_THIS_CLASS
 #define UTL_THIS_CLASS ""
@@ -68,9 +69,6 @@ do { \
 #define rw_enter_write(a1) do {} while (0)
 #define rw_exit(a1) do {} while (0)
 
-// TODO: Implement using tsleep() ?
-#define tsleep_nsec(a1, a2, a3, a4) ((int)0) /* expects an expression */
-
 constexpr int cold = 1;
 struct rtsx_proc {
 	struct ps_comm_st {
@@ -79,7 +77,6 @@ struct rtsx_proc {
 	struct ps_comm_st *p_p;
 };
 constexpr rtsx_proc *curproc = nullptr;
-#define tsleep(a1, a2, a3, a4) do {} while (0)
 
 // scsi
 #define sdmmc_scsi_attach(a1) do {} while (0)
