@@ -15,13 +15,13 @@
 #endif
 
 #define UTL_ERR(fmt, ...) do { \
-	os_log_error(OS_LOG_DEFAULT, "rtsx: %12s%-22s: " fmt "\n", \
+	os_log_error(OS_LOG_DEFAULT, "rtsx: %14s%-22s: " fmt "\n", \
 		UTL_THIS_CLASS, __func__, ##__VA_ARGS__); \
 	if (UTL_LOG_DELAY_MS) IOSleep(UTL_LOG_DELAY_MS); /* Wait for log to appear... */ \
 } while (0)
 
 #define UTL_LOG(fmt, ...) do { \
-	os_log(OS_LOG_DEFAULT, "rtsx: %12s%-22s: " fmt "\n", \
+	os_log(OS_LOG_DEFAULT, "rtsx:\t%14s%-22s: " fmt "\n", \
 		UTL_THIS_CLASS, __func__, ##__VA_ARGS__); \
 	if (UTL_LOG_DELAY_MS) IOSleep(UTL_LOG_DELAY_MS); /* Wait for log to appear... */ \
 } while (0)
@@ -43,7 +43,7 @@
 #define UTL_DEBUG(lvl, fmt, ...) \
 do { \
 	if (lvl < UTL_DEBUG_LEVEL) { \
-		os_log_debug(OS_LOG_DEFAULT, "rtsx: %12s%-22s: " fmt "\n", \
+		os_log_debug(OS_LOG_DEFAULT, "rtsx:\t%14s%-22s: " fmt "\n", \
 		UTL_THIS_CLASS, __func__, ##__VA_ARGS__); \
 		if (UTL_LOG_DELAY_MS) IOSleep(UTL_LOG_DELAY_MS); /* Wait for log to appear... */ \
 	} \
