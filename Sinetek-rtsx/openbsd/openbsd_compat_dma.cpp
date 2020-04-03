@@ -16,7 +16,6 @@ typedef struct {
 
 _bus_dma_tag _busDmaTag = { nullptr, nullptr };
 bus_space_tag_t gBusSpaceTag = {};
-//bus_space_handle_t gBusSpaceHandle = {};
 bus_dma_tag_t gBusDmaTag = (bus_dma_tag_t) &_busDmaTag;
 
 // bus_dmamap_create();         /* get a dmamap to load/unload          */
@@ -104,27 +103,27 @@ bus_dmamem_alloc(bus_dma_tag_t tag, bus_size_t size, bus_size_t alignment, bus_s
 	UTL_CHK_PTR(segs, EINVAL);
 	UTL_CHK_PTR(rsegs, EINVAL);
 
-	if (_tag->memoryDescriptor) {
+	auto &memDesc = _tag->memoryDescriptor;
+	if (memDesc) {
 		UTL_ERR("Only one bus_dmamem_alloc is supported (it has to be freed before it is used again)!");
 		return ENOTSUP; // only one dma_alloc
 	}
 
-	_tag->memoryDescriptor =
-	IOBufferMemoryDescriptor::inTaskWithPhysicalMask(
+	memDesc = IOBufferMemoryDescriptor::inTaskWithPhysicalMask(
 							 kernel_task,
 							 kIODirectionInOut |
 							 kIOMemoryPhysicallyContiguous |
 							 kIOMapInhibitCache,
 							 size,
 							 0x00000000ffffffffull);
-	if (!_tag->memoryDescriptor) return ENOMEM;
+	if (!memDesc) return ENOMEM;
 
 	IOByteCount len;
-	auto addr = _tag->memoryDescriptor->getPhysicalSegment(0, &len);
+	auto addr = memDesc->getPhysicalSegment(0, &len);
 	if (len != size) {
 		UTL_ERR("len (%d) != size (%d)", (int) len, (int) size);
-		_tag->memoryDescriptor->release();
-		_tag->memoryDescriptor = nullptr;
+		memDesc->release();
+		memDesc = nullptr;
 		return kIOReturnUnsupported;
 	}
 	segs[0].ds_addr = addr;
@@ -132,7 +131,7 @@ bus_dmamem_alloc(bus_dma_tag_t tag, bus_size_t size, bus_size_t alignment, bus_s
 	*rsegs = 1;
 
 	// call prepare here? does this wire the pages?
-	_tag->memoryDescriptor->prepare();
+	memDesc->prepare();
 	UTL_DEBUG(1, "END");
 	return 0;
 }
@@ -144,12 +143,13 @@ bus_dmamem_free(bus_dma_tag_t tag, bus_dma_segment_t *segs, int nsegs)
 	UTL_CHK_PTR(segs,);
 	if (nsegs != 1) return; // only one supported for now
 	_bus_dma_tag *_tag = reinterpret_cast<_bus_dma_tag *>(tag);
-	if (!_tag->memoryDescriptor) return;
+	auto &memDesc = _tag->memoryDescriptor;
+	if (!memDesc) return;
 
 	// complete and release
-	_tag->memoryDescriptor->complete();
-	_tag->memoryDescriptor->release();
-	_tag->memoryDescriptor = nullptr;
+	memDesc->complete();
+	memDesc->release();
+	memDesc = nullptr;
 }
 
 int
@@ -162,10 +162,11 @@ bus_dmamem_map(bus_dma_tag_t tag, bus_dma_segment_t *segs, int nsegs, size_t siz
 	UTL_CHK_PTR(_tag, EINVAL);
 	UTL_CHK_PTR(kvap, EINVAL);
 
-	if (!_tag->memoryDescriptor) return EINVAL;
+	auto memDesc = _tag->memoryDescriptor;
+	if (!memDesc) return EINVAL;
 	if (_tag->memoryMap) return ENOTSUP;
 
-	_tag->memoryMap = _tag->memoryDescriptor->map();
+	_tag->memoryMap = memDesc->map();
 	if (!_tag->memoryMap) {
 		UTL_ERR("memoryDescriptor->map() returned null!");
 		return ENOMEM;
