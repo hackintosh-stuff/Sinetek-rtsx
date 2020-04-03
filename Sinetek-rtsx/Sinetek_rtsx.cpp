@@ -11,6 +11,7 @@
 #define super IOService
 OSDefineMetaClassAndStructors(Sinetek_rtsx, super);
 
+#include "openbsd_compat_config.h" // config_detach
 #include "rtsxreg.h"
 #include "rtsxvar.h" // rtsx_softc
 #include "SDDisk.hpp"
@@ -221,8 +222,18 @@ void Sinetek_rtsx::rtsx_pci_attach()
 	UTL_DEBUG(2, "END");
 }
 
+/// In OpenBSD this is not implemented, but that means that the detach() should be passed on to the children (sdmmc).
+/// An SDDisk is created when an SD card is inserted, but the sdmmc is active all the time. For that reason, we call
+/// detach for the sdmmc here and not in SDDisk.
 void Sinetek_rtsx::rtsx_pci_detach()
 {
+	// call detach on sdmmc
+	// TODO: This should actually be called on rtsx_softc_original_, but the logic of calling children's detach()
+	// is not implemented yet at the compatibility layer. So since we know that the only child is sdmmc, we call it
+	// directly.
+	config_detach(rtsx_softc_original_->sdmmc, 0);
+	//sdmmc_detach(rtsx_softc_original_->sdmmc, 0);
+
 	UTL_CHK_PTR(workloop_,);
 	UTL_CHK_PTR(intr_source_,);
 

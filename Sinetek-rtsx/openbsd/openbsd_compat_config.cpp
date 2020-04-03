@@ -4,7 +4,6 @@
 #include <sys/errno.h> // ENOTSUP
 #include <IOKit/IOLib.h> // IOMalloc, IOFree
 
-#include "device.h"
 #include "sdmmcvar.h" // sdmmc_attach_args, sdmmc_softc_original
 
 #define UTL_THIS_CLASS ""
@@ -15,10 +14,6 @@
 extern struct cfattach sdmmc_ca;
 extern struct cfdriver sdmmc_cd;
 extern struct cfdriver rtsx_cd;
-
-// forward-declare static functions
-static int config_deactivate(struct device *dev);
-static int config_suspend(struct device *dev, int act);
 
 /// Array of cfdata to be matched
 /// TODO: should be this named cfdata as defined in device.h?
@@ -39,7 +34,7 @@ static void *config_search(cfmatch_t fn, struct device *parent, void *aux)
 /**
  * Attach a device (allocate memory for device)
  */
-static struct device *config_attach(struct device *parent, void *match, void *aux, cfprint_t print) {
+struct device *config_attach(struct device *parent, void *match, void *aux, cfprint_t print) {
 	struct device *ret;
 	struct cfdata *this_cfdata = (struct cfdata *) match;
 	UTL_CHK_PTR(this_cfdata, nullptr);
@@ -52,6 +47,7 @@ static struct device *config_attach(struct device *parent, void *match, void *au
 	UTL_CHK_PTR(ret, nullptr);
 	UTL_DEBUG(2, "Memory allocated => " RTSX_PTR_FMT, RTSX_PTR_FMT_VAR(ret));
 	bzero(ret, devSize);
+	ret->dv_flags = DVF_ACTIVE; // used by deactivate
 
 	// copy name (the only used member?)
 	UTL_CHK_PTR(this_cfdata->cf_driver, nullptr);
@@ -139,7 +135,6 @@ int config_activate_children(struct device *dev, int) {
 	return 0; // nothing to do?
 }
 
-static /* for now */
 int config_deactivate(struct device *dev)
 {
 	int rv = 0, oflags = dev->dv_flags;
@@ -160,7 +155,6 @@ void config_pending_decr(void) {
 	return; // nothing to do?
 }
 
-static /* for now */
 int config_suspend(struct device *dev, int act)
 {
 	struct cfattach *ca = dev->dv_cfdata->cf_attach;
