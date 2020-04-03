@@ -28,3 +28,4 @@ Used by `#define`/`#if <option>`:
  - Multi-block read?
  - Use command gate instead of two workloops? Is it even possible?
  - Once a disk is mounted, the kext cannot be unloaded (check why).
+ - Prevent namespace pollution (BSD functions pollute the namespace and may cause collisions)

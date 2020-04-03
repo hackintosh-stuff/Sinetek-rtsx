@@ -1,17 +1,19 @@
 #!/bin/bash
 
 KPATH="$HOME/Library/Developer/Xcode/DerivedData/Sinetek-rtsx-bpnguoevveybdhfrrjjdpfweiiwu/Build/Products/Debug"
+KPATH2="`dirname $0`/../DerivedData/Build/Products/Debug"
 KEXT="Sinetek-rtsx.kext"
-
-if [ ! -x /usr/local/bin/rsync ]; then
-	echo "Install brew's rsync."
-	exit 1
-fi
 
 if [ -d "$KEXT" ]; then
 	sudo rm -rf "$KEXT"
 fi
 
 # copy and set uid/gid
-cp -r "$KPATH/$KEXT" ./
+if [ -d "$KPATH/$KEXT" ]; then
+	echo "Copying from Xcode's DerivedData..."
+	cp -r "$KPATH/$KEXT" ./
+elif [ -d "$KPATH2/$KEXT" ]; then
+	echo "Copying from project-local DerivedData..."
+	cp -r "$KPATH2/$KEXT" ./
+fi
 sudo chown -R root:wheel "$KEXT"

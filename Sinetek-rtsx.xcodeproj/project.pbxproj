@@ -77,22 +77,22 @@
 		93576F8424263CC8006F1A33 /* openbsd */ = {
 			isa = PBXGroup;
 			children = (
+				93807803243383E00014C724 /* openbsd_compat_bus_space.cpp */,
+				93807804243383E00014C724 /* openbsd_compat_bus_space.h */,
+				932FC7BD2431EFE700B1A5D0 /* openbsd_compat_config.cpp */,
+				932FC7BE2431EFE700B1A5D0 /* openbsd_compat_config.h */,
 				9319F48E243081B600A4921E /* openbsd_compat_dma.cpp */,
 				9319F48C243081B600A4921E /* openbsd_compat_dma.h */,
+				933730282435ACC700254E78 /* openbsd_compat_kthread.cpp */,
+				933730292435ACC700254E78 /* openbsd_compat_kthread.h */,
+				932FC7C12432230000B1A5D0 /* openbsd_compat_queue.h */,
+				93348FA42435C2FD00F26905 /* openbsd_compat_spl.cpp */,
+				939C544424345486007E0DF6 /* openbsd_compat_spl.h */,
+				93371E9E2435C52E004D5FFB /* openbsd_compat_tsleep.cpp */,
+				93371E9F2435C52E004D5FFB /* openbsd_compat_tsleep.h */,
 				9319F48B243081B600A4921E /* openbsd_compat_types.h */,
 				9319F48D243081B600A4921E /* openbsd_compat.cpp */,
 				93576F8524263CF3006F1A33 /* openbsd_compat.h */,
-				932FC7BD2431EFE700B1A5D0 /* openbsd_compat_config.cpp */,
-				932FC7BE2431EFE700B1A5D0 /* openbsd_compat_config.h */,
-				932FC7C12432230000B1A5D0 /* openbsd_compat_queue.h */,
-				93807803243383E00014C724 /* openbsd_compat_bus_space.cpp */,
-				93807804243383E00014C724 /* openbsd_compat_bus_space.h */,
-				93348FA42435C2FD00F26905 /* openbsd_compat_spl.cpp */,
-				939C544424345486007E0DF6 /* openbsd_compat_spl.h */,
-				933730282435ACC700254E78 /* openbsd_compat_kthread.cpp */,
-				933730292435ACC700254E78 /* openbsd_compat_kthread.h */,
-				93371E9E2435C52E004D5FFB /* openbsd_compat_tsleep.cpp */,
-				93371E9F2435C52E004D5FFB /* openbsd_compat_tsleep.h */,
 			);
 			path = openbsd;
 			sourceTree = "<group>";
@@ -121,25 +121,25 @@
 			isa = PBXGroup;
 			children = (
 				93576F8424263CC8006F1A33 /* openbsd */,
+				9E9EEDAF1E4C65AD00E640DB /* Info.plist */,
 				9E11DE571E4CB19C00AF36C8 /* SDDisk.cpp */,
 				9E11DE581E4CB19C00AF36C8 /* SDDisk.hpp */,
-				9E9EEDAB1E4C65AD00E640DB /* Sinetek_rtsx.hpp */,
 				9E9EEDAD1E4C65AD00E640DB /* Sinetek_rtsx.cpp */,
+				9E9EEDAB1E4C65AD00E640DB /* Sinetek_rtsx.hpp */,
+				935884C92421D21500E781A7 /* util.h */,
+				E811EB2A202D93B900049454 /* device.h */,
 				9E9EEDB71E4C6EC100E640DB /* rtsx.cpp */,
 				9E9EEDB51E4C6CAB00E640DB /* rtsxreg.h */,
 				9E9EEDB61E4C6D2400E640DB /* rtsxvar.h */,
-				9E9EEDC01E4C89FA00E640DB /* sdmmc_io.cpp */,
 				9E9EEDBD1E4C869F00E640DB /* sdmmc_cis.cpp */,
+				9E9EEDC01E4C89FA00E640DB /* sdmmc_io.cpp */,
+				9E9EEDB91E4C723000E640DB /* sdmmc_ioreg.h */,
 				9E9EEDC21E4C927D00E640DB /* sdmmc_mem.cpp */,
 				9E9EEDC41E4C98AC00E640DB /* sdmmc.cpp */,
-				9E9EEDB91E4C723000E640DB /* sdmmc_ioreg.h */,
 				9E9EEDBA1E4C72D500E640DB /* sdmmcchip.h */,
-				9E9EEDBB1E4C730D00E640DB /* sdmmcvar.h */,
-				9E9EEDBC1E4C73D200E640DB /* sdmmcreg.h */,
 				9E9EEDBF1E4C86C800E640DB /* sdmmcdevs.h */,
-				9E9EEDAF1E4C65AD00E640DB /* Info.plist */,
-				E811EB2A202D93B900049454 /* device.h */,
-				935884C92421D21500E781A7 /* util.h */,
+				9E9EEDBC1E4C73D200E640DB /* sdmmcreg.h */,
+				9E9EEDBB1E4C730D00E640DB /* sdmmcvar.h */,
 			);
 			path = "Sinetek-rtsx";
 			sourceTree = "<group>";
