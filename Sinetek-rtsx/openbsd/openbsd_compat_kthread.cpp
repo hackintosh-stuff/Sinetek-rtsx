@@ -26,6 +26,8 @@ static void my_thread_continue(void *arg, wait_result_t wait_result)
 	// Call OpenBSD thread
 	myArg->func(myArg->arg);
 	UTL_LOG("OpenBSD thread function returned!");
+	// call kthread_exit() ourselves
+	kthread_exit(0);
 }
 
 int
@@ -58,8 +60,11 @@ kthread_create_deferred(void (*func)(void *), void *arg)
 	func(arg);
 }
 
-void
+void __attribute__((noreturn))
 kthread_exit(int ecode)
 {
-	// TODO: delete myArg here??
+	UTL_DEBUG(3, "Calling thread_terminate() (should not return)");
+	thread_terminate(current_thread());
+	UTL_ERR("thread_terminate() returned! Looping...");
+	while(1) {}
 }
