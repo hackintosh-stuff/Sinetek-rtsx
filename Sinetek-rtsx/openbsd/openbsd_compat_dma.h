@@ -77,8 +77,6 @@ bus_dmamem_map(bus_dma_tag_t tag, bus_dma_segment_t *segs, int nsegs, size_t siz
 void
 bus_dmamem_unmap(bus_dma_tag_t tag, void *kva, size_t size);
 
-uint64_t getPhysicalAddress(const bus_dmamap_t map);
-
 #ifdef __cplusplus
 }
 #endif

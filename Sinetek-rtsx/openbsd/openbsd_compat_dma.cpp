@@ -9,10 +9,6 @@
 #define UTL_THIS_CLASS ""
 #include "util.h"
 
-static inline IOBufferMemoryDescriptor *TO_IO(bus_dmamap_t dmamp) {
-	return (IOBufferMemoryDescriptor *) dmamp;
-}
-
 typedef struct {
 	IOBufferMemoryDescriptor *memoryDescriptor;
 	IOMemoryMap              *memoryMap;
@@ -187,9 +183,4 @@ bus_dmamem_unmap(bus_dma_tag_t tag, void *kva, size_t size)
 
 	_tag->memoryMap->release();
 	_tag->memoryMap = nullptr;
-}
-
-uint64_t getPhysicalAddress(const bus_dmamap_t dmamp) {
-	UTL_DEBUG(1, "START");
-	return (uint64_t) TO_IO(dmamp)->getPhysicalAddress();
 }
