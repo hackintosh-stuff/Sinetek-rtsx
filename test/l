@@ -1,11 +1,11 @@
 #!/bin/bash
 
-LOG_ARGS="--predicate 'processID == 0 AND sender == \"Sinetek-rtsx\"' --style compact --level debug"
+LOG_ARGS="--predicate 'processID == 0 AND sender == \"Sinetek-rtsx\"' --style compact"
 
 if [ $# -ge 1 -a "$1" = "show" ]; then
-	eval log show $LOG_ARGS
+	eval log show $LOG_ARGS --debug --info
 elif [ $# -ge 1 -a "$1" = "erase" ]; then
 	sudo log erase -all
 else
-	eval log stream $LOG_ARGS
+	eval log stream $LOG_ARGS --level debug
 fi

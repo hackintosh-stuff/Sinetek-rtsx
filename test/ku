@@ -13,5 +13,11 @@ if [ $# -eq 1 -a "$1" = "-b" ]; then
 elif [ $# -eq 1 -a "$1" = "-c" ]; then
 	sudo kextunload -c "$CLASS_NAME" -v 1
 else
-	sudo kextunload "$KEXT"
+	echo "Unloading kext..."
+	sudo kextunload "$KEXT" >/dev/null 2>&1 \
+		&& (echo "Kext unloaded"; exit 0)
+	echo "Unloading class first..."
+	sudo kextunload -c "$CLASS_NAME" >/dev/null 2>&1
+	sudo kextunload "$KEXT" >/dev/null 2>&1 \
+		|| (echo "Failed."; exit 2)
 fi

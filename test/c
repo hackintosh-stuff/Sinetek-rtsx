@@ -3,17 +3,38 @@
 KPATH="$HOME/Library/Developer/Xcode/DerivedData/Sinetek-rtsx-bpnguoevveybdhfrrjjdpfweiiwu/Build/Products/Debug"
 KPATH2="`dirname $0`/../DerivedData/Build/Products/Debug"
 KEXT="Sinetek-rtsx.kext"
+BINPATH="Contents/MacOS/Sinetek-rtsx"
 
-if [ -d "$KEXT" ]; then
-	sudo rm -rf "$KEXT"
-fi
+# F2 should be the most recent file, otherwise a warning is shown
+function checkDate() {
+	local F1="$1"
+	local F2="$2"
+
+	# F1 may not exist...
+	if sudo [ ! -e "$F1" ]; then
+		echo "$F1 does not exist"
+		return 0
+	fi
+
+	local D1=`date -r $F1 \+%s`
+	local D2=`date -r $F2 \+%s`
+
+	if [ $D2 -le $D1 ]; then
+		echo "Warning: Copying an older or same date kext!"
+	fi
+}
+
 
 # copy and set uid/gid
 if [ -d "$KPATH/$KEXT" ]; then
 	echo "Copying from Xcode's DerivedData..."
-	cp -r "$KPATH/$KEXT" ./
+	checkDate "$KEXT/$BINPATH" "$KPATH/$KEXT/$BINPATH"
+	sudo rm -rf "$KEXT"
+	cp -rp "$KPATH/$KEXT" ./
 elif [ -d "$KPATH2/$KEXT" ]; then
 	echo "Copying from project-local DerivedData..."
-	cp -r "$KPATH2/$KEXT" ./
+	checkDate "$KEXT/$BINPATH" "$KPATH2/$KEXT/$BINPATH"
+	sudo rm -rf "$KEXT"
+	cp -rp "$KPATH2/$KEXT" ./
 fi
 sudo chown -R root:wheel "$KEXT"
