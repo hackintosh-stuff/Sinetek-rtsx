@@ -3,7 +3,7 @@
 
 typedef unsigned spl_t;
 
-#if DEBUG
+#if RTSX_DEBUG_OPENBSD_COMPAT_SPL
 #define RTSX_OPENBSD_COMPAT_SPL_DBG(...) printf(__VA_ARGS__)
 #else
 #define RTSX_OPENBSD_COMPAT_SPL_DBG(...) do {} while (0)

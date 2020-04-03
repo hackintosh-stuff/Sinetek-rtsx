@@ -170,13 +170,17 @@ sdmmc_attach(struct device *parent, struct device *self, void *aux)
 int
 sdmmc_detach(struct device *self, int flags)
 {
+	UTL_LOG("START");
 	struct sdmmc_softc *sc = (struct sdmmc_softc *)self;
 
 	sc->sc_dying = 1;
 	while (sc->sc_task_thread != NULL) {
+		UTL_DEBUG(1, "Waking up worker...");
 		wakeup(&sc->sc_tskq);
 		tsleep_nsec(sc, PWAIT, "mmcdie", INFSLP);
+		UTL_DEBUG(1, "Done?");
 	}
+	UTL_DEBUG(1, "Done!");
 
 	if (sc->sc_dmap)
 		bus_dmamap_destroy(sc->sc_dmat, sc->sc_dmap);

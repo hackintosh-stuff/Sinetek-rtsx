@@ -281,7 +281,7 @@ sdmmc_io_attach(struct sdmmc_softc *sc)
 	struct sdmmc_function *sf;
 	struct sdmmc_attach_args saa;
 
-	UTL_DEBUG(1, "START (if this function is called, we need to implement a more intelligent config_found_sm...)");
+	UTL_ERR("START (if this function is called, we need to implement a more intelligent config_found_sm...)");
 
 	rw_assert_wrlock(&sc->sc_lock);
 
