@@ -59,9 +59,9 @@ do { \
 #define ISSET(t, f)  ((t) &   (f))
 #define CLR(t, f)    ((t) &= ~(f))
 
-// bitfield (most probably unused)
-#define __packed
-#define __aligned(N)
+// attributes
+#define __packed __attribute__((packed))
+#define __aligned(N) __attribute__((aligned(N)))
 
 // rwlock
 #define rw_init(a1, a2) do {} while (0)

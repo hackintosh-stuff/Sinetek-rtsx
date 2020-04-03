@@ -11,6 +11,8 @@ int lbolt; // TODO: Need to implement a 1-second timer here, but it's not worth 
 // we need to implement these two in terms of msleep, which is what macOS provides...
 // See: https://github.com/apple/darwin-xnu/blob/master/bsd/kern/kern_synch.c
 
+// WARNING: The kernel will crash if msleep is called while a IOSimpleLock is held!
+
 // will sleep at most timo/hz seconds
 int tsleep(void *ident, int priority, const char *wmesg, int timo)
 {
@@ -21,7 +23,9 @@ int tsleep(void *ident, int priority, const char *wmesg, int timo)
 		ts.tv_nsec = nsecs % NS_PER_SEC;
 	}
 	UTL_DEBUG(2, "Calling msleep(%d/%d)...", (int) ts.tv_sec, (int) ts.tv_nsec);
-	return msleep(ident, nullptr, priority, wmesg, &ts);
+	auto ret = msleep(ident, nullptr, priority, wmesg, &ts);
+	UTL_DEBUG(2, "msleep returned");
+	return ret;
 }
 
 int tsleep_nsec(void *ident, int priority, const char *wmesg, uint64_t nsecs)
@@ -32,5 +36,7 @@ int tsleep_nsec(void *ident, int priority, const char *wmesg, uint64_t nsecs)
 		ts.tv_nsec = nsecs % NS_PER_SEC;
 	}
 	UTL_DEBUG(2, "Calling msleep(%d/%d)...", (int) ts.tv_sec, (int) ts.tv_nsec);
-	return msleep(ident, nullptr, priority, wmesg, &ts);
+	auto ret = msleep(ident, nullptr, priority, wmesg, &ts);
+	UTL_DEBUG(2, "msleep returned");
+	return ret;
 }

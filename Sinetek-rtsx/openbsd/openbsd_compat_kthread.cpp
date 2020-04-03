@@ -25,12 +25,12 @@ static void my_thread_continue(void *arg, wait_result_t wait_result)
 	UTL_DEBUG(1, "Thred created (wait_result=%d), calling OpenBSD function...", (int) wait_result);
 	// Call OpenBSD thread
 	myArg->func(myArg->arg);
+	UTL_LOG("OpenBSD thread function returned!");
 }
 
 int
 kthread_create(void (*func)(void *), void *arg, struct proc **newpp, const char *name)
 {
-
 	int ret;
 
 	UTL_DEBUG(1, "Creating new thread (name=%s)...", name);
@@ -61,5 +61,5 @@ kthread_create_deferred(void (*func)(void *), void *arg)
 void
 kthread_exit(int ecode)
 {
-	// delete myArg here??
+	// TODO: delete myArg here??
 }

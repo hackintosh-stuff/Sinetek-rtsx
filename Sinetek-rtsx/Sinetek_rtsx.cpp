@@ -223,8 +223,6 @@ void Sinetek_rtsx::rtsx_pci_attach()
 
 void Sinetek_rtsx::rtsx_pci_detach()
 {
-	//	rtsx_detach();
-
 	UTL_CHK_PTR(workloop_,);
 	UTL_CHK_PTR(intr_source_,);
 
@@ -279,6 +277,7 @@ done:
 
 void Sinetek_rtsx::prepare_task_loop()
 {
+	UTL_CHK_PTR(workloop_,);
 #if RTSX_USE_IOCOMMANDGATE
 	task_command_gate_ = IOCommandGate::commandGate(this, rtsx_softc::executeOneCommandGateAction);
 	workloop_->addEventSource(task_command_gate_);

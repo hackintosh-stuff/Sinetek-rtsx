@@ -77,14 +77,14 @@ bus_dmamap_destroy(bus_dma_tag_t tag, bus_dmamap_t dmamp) {
 int
 bus_dmamap_load(bus_dma_tag_t tag, bus_dmamap_t dmam, void *buf, bus_size_t buflen, struct proc *p, int flags)
 {
-	UTL_DEBUG(1, "START");
+	UTL_ERR("FUNCTION NOT YET IMPLEMENTED!");
 	return ENOTSUP;
 }
 
 void
 bus_dmamap_unload(bus_dma_tag_t dmat, bus_dmamap_t map)
 {
-	UTL_DEBUG(1, "START");
+	UTL_ERR("FUNCTION NOT YET IMPLEMENTED!");
 	return;
 }
 
@@ -108,7 +108,10 @@ bus_dmamem_alloc(bus_dma_tag_t tag, bus_size_t size, bus_size_t alignment, bus_s
 	UTL_CHK_PTR(segs, EINVAL);
 	UTL_CHK_PTR(rsegs, EINVAL);
 
-	if (_tag->memoryDescriptor) return ENOTSUP; // only one dma_alloc
+	if (_tag->memoryDescriptor) {
+		UTL_ERR("Only one bus_dmamem_alloc is supported (it has to be freed before it is used again)!");
+		return ENOTSUP; // only one dma_alloc
+	}
 
 	_tag->memoryDescriptor =
 	IOBufferMemoryDescriptor::inTaskWithPhysicalMask(
