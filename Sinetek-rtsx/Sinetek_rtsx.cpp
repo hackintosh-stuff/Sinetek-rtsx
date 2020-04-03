@@ -90,6 +90,14 @@ bool Sinetek_rtsx::start(IOService *provider)
 
 	prepare_task_loop();
 	rtsx_pci_attach();
+	
+	PMinit();
+	provider_->joinPMtree(this);
+	if (registerPowerDriver(this, ourPowerStates, kPowerStateCount) != IOPMNoErr)
+	{
+		UTL_ERR("registerPowerDriver failed");
+	}
+	UTL_DEBUG(2, "Power management initialized");
 
 	UTL_LOG("Driver started (%s version)",
 #if DEBUG
@@ -153,21 +161,6 @@ void Sinetek_rtsx::rtsx_pci_attach()
 
 	/* Enable the device */
 	provider_->setBusMasterEnable(true);
-
-	/* syscl - Power up the device */
-	UTL_DEBUG(2, "Before PMinit");
-	PMinit();
-
-	// join into the power plane
-	UTL_DEBUG(2, "Before joinPMtree");
-	provider_->joinPMtree(this);
-	UTL_DEBUG(2, "After joinPMtree");
-
-	if (registerPowerDriver(this, ourPowerStates, kPowerStateCount) != IOPMNoErr)
-	{
-		UTL_ERR("Could not register state.");
-	}
-	UTL_DEBUG(2, "After registerPowerDriver");
 
 	/* Map device memory with register. */
 	device_id = provider_->extendedConfigRead16(kIOPCIConfigDeviceID);
