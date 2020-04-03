@@ -50,7 +50,7 @@ static struct device *config_attach(struct device *parent, void *match, void *au
 	UTL_DEBUG(2, "Allocating %d bytes...", devSize);
 	ret = (struct device *) IOMalloc(devSize);
 	UTL_CHK_PTR(ret, nullptr);
-	UTL_DEBUG(2, "Memory allocated");
+	UTL_DEBUG(2, "Memory allocated => " RTSX_PTR_FMT, RTSX_PTR_FMT_VAR(ret));
 	bzero(ret, devSize);
 
 	// copy name (the only used member?)
@@ -115,20 +115,27 @@ int config_detach(struct device *dev, int flags)
 	ret = config_deactivate(dev);
 	if (ret == 0) {
 		// call detach
-		if (cf_attach && cf_attach->ca_detach)
+		if (cf_attach && cf_attach->ca_detach) {
+			UTL_DEBUG(2, "Calling detach function...");
 			ret = cf_attach->ca_detach(dev, flags);
-		else
+			UTL_DEBUG(2, "Detach function returns");
+		} else {
+			UTL_ERR("Null detach function not supported yet!");
 			ret = ENOTSUP;
+		}
 	}
 
 	// TODO: Check OpenBSD code. It does more processing here...
 	
 	uint32_t devSize = (uint32_t) cf_attach->ca_devsize;
+	UTL_DEBUG(2, "Freeing %d bytes at " RTSX_PTR_FMT, devSize, RTSX_PTR_FMT_VAR(dev));
 	IOFree(dev, devSize);
 	return ret;
 }
 
-int config_activate_children(struct device *, int) {
+int config_activate_children(struct device *dev, int) {
+	// see subr_autoconf for implementation (not difficult, but do we need it?)
+	UTL_ERR("Function not implemented called by device \"%s\"!", dev->dv_xname);
 	return 0; // nothing to do?
 }
 

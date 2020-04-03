@@ -20,10 +20,7 @@
 #define _SDMMCVAR_H_
 
 #if __APPLE__
-#include "device.h"
-#include "sdmmcchip.h"
-#include "sdmmcreg.h"
-#include "openbsd_compat_queue.h"
+#include "openbsd_compat.h"
 #else
 #include <sys/queue.h>
 #include <sys/rwlock.h>

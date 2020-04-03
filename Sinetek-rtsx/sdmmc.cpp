@@ -170,21 +170,24 @@ sdmmc_attach(struct device *parent, struct device *self, void *aux)
 int
 sdmmc_detach(struct device *self, int flags)
 {
-	UTL_LOG("START");
+	UTL_DEBUG(3, "START");
 	struct sdmmc_softc *sc = (struct sdmmc_softc *)self;
 
 	sc->sc_dying = 1;
 	while (sc->sc_task_thread != NULL) {
-		UTL_DEBUG(1, "Waking up worker...");
+		UTL_DEBUG(3, "Waking up worker...");
 		wakeup(&sc->sc_tskq);
+		UTL_DEBUG(3, "Waiting for worker...");
+		// Is there a race condition here?s
 		tsleep_nsec(sc, PWAIT, "mmcdie", INFSLP);
-		UTL_DEBUG(1, "Done?");
+		UTL_DEBUG(3, "Done?");
 	}
-	UTL_DEBUG(1, "Done!");
+	UTL_DEBUG(3, "Done!");
 
 	if (sc->sc_dmap)
 		bus_dmamap_destroy(sc->sc_dmat, sc->sc_dmap);
 
+	UTL_DEBUG(3, "END");
 	return 0;
 }
 
@@ -263,10 +266,15 @@ restart:
 	}
 	splx(s);
 
+	UTL_DEBUG(1, "sdmmc is dying (%d)...", sc->sc_dying);
+
 	if (ISSET(sc->sc_flags, SMF_CARD_PRESENT)) {
+		UTL_DEBUG(1, "Card present. Detaching...");
 		rw_enter_write(&sc->sc_lock);
 		sdmmc_card_detach(sc, DETACH_FORCE);
 		rw_exit(&sc->sc_lock);
+	} else {
+		UTL_DEBUG(1, "Card not present. Not detaching.");
 	}
 
 	/*
@@ -280,6 +288,7 @@ restart:
 	}
 	sc->sc_task_thread = NULL;
 	wakeup(sc);
+	UTL_DEBUG(1, "sdmmc_task_thread exitting...");
 	kthread_exit(0);
 }
 

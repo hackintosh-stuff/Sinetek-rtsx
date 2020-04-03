@@ -22,9 +22,9 @@ int tsleep(void *ident, int priority, const char *wmesg, int timo)
 		ts.tv_sec = nsecs / NS_PER_SEC;
 		ts.tv_nsec = nsecs % NS_PER_SEC;
 	}
-	UTL_DEBUG(2, "Calling msleep(%d/%d)...", (int) ts.tv_sec, (int) ts.tv_nsec);
+	UTL_DEBUG(4, "%s: Calling msleep(%d/%d)...", wmesg, (int) ts.tv_sec, (int) ts.tv_nsec);
 	auto ret = msleep(ident, nullptr, priority, wmesg, &ts);
-	UTL_DEBUG(2, "msleep returned");
+	UTL_DEBUG(4, "%s: msleep returned %d", wmesg, ret);
 	return ret;
 }
 
@@ -35,8 +35,8 @@ int tsleep_nsec(void *ident, int priority, const char *wmesg, uint64_t nsecs)
 		ts.tv_sec = nsecs / NS_PER_SEC;
 		ts.tv_nsec = nsecs % NS_PER_SEC;
 	}
-	UTL_DEBUG(2, "Calling msleep(%d/%d)...", (int) ts.tv_sec, (int) ts.tv_nsec);
+	UTL_DEBUG(4, "%s: Calling msleep(%d/%d)...", wmesg, (int) ts.tv_sec, (int) ts.tv_nsec);
 	auto ret = msleep(ident, nullptr, priority, wmesg, &ts);
-	UTL_DEBUG(2, "msleep returned");
+	UTL_DEBUG(4, "%s: msleep returned %d", wmesg, ret);
 	return ret;
 }
