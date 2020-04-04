@@ -97,6 +97,12 @@ sdmmc_match(struct device *parent, void *match, void *aux)
 	struct sdmmcbus_attach_args *saa = aux;
 #endif
 
+	UTL_CHK_PTR(saa, 0);
+	UTL_CHK_PTR(saa->saa_busname, 0);
+	UTL_CHK_PTR(cf, 0);
+	UTL_CHK_PTR(cf->cf_driver, 0);
+	UTL_CHK_PTR(cf->cf_driver->cd_name, 0);
+
 	return strcmp(saa->saa_busname, cf->cf_driver->cd_name) == 0;
 }
 
@@ -180,7 +186,7 @@ sdmmc_detach(struct device *self, int flags)
 		UTL_DEBUG(3, "Waiting for worker...");
 		// Is there a race condition here?s
 		tsleep_nsec(sc, PWAIT, "mmcdie", INFSLP);
-		UTL_DEBUG(3, "Done?");
+		UTL_DEBUG(4, "Done?");
 	}
 	UTL_DEBUG(3, "Done!");
 
@@ -613,7 +619,6 @@ sdmmc_init(struct sdmmc_softc *sc)
 
 	/* Any good functions left after initialization? */
 	SIMPLEQ_FOREACH(sf, &sc->sf_head, sf_list) {
-		UTL_DEBUG(0, "rstx: IDENTIFIED FUNCTION... (sc->sc_flags = 0x%02x)", sc->sc_flags);
 		if (!ISSET(sf->flags, SFF_ERROR))
 			return 0;
 	}
@@ -880,23 +885,23 @@ sdmmc_dump_command(struct sdmmc_softc *sc, struct sdmmc_command *cmd)
 
 	rw_assert_wrlock(&sc->sc_lock);
 
-#ifndef __APPLE__
 	DPRINTF(1,("%s: cmd %u arg=%#x data=%p dlen=%d flags=%#x "
 	    "proc=\"%s\" (error %d)\n", DEVNAME(sc), cmd->c_opcode,
 	    cmd->c_arg, cmd->c_data, cmd->c_datalen, cmd->c_flags,
 	    curproc ? curproc->p_p->ps_comm : "", cmd->c_error));
-#endif // __APPLE__
 
 	if (cmd->c_error || sdmmcdebug < 1)
 		return;
 
-	printf("%s: resp=", DEVNAME(sc));
+	char buf[100] = { 0 }; size_t bi;
+
+	bi = scnprintf(buf, 100, "%s: resp=", DEVNAME(sc));
 	if (ISSET(cmd->c_flags, SCF_RSP_136))
 		for (i = 0; i < sizeof cmd->c_resp; i++)
-			printf("%02x ", ((u_char *)cmd->c_resp)[i]);
+			bi += scnprintf(buf + bi, 100 - bi, "%02x ", ((u_char *)cmd->c_resp)[i]);
 	else if (ISSET(cmd->c_flags, SCF_RSP_PRESENT))
 		for (i = 0; i < 4; i++)
-			printf("%02x ", ((u_char *)cmd->c_resp)[i]);
-	printf("\n");
+			bi += scnprintf(buf + bi, 100 - bi, "%02x ", ((u_char *)cmd->c_resp)[i]);
+	printf("%s\n", buf);
 }
 #endif
