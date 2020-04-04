@@ -160,6 +160,7 @@ sdmmc_io_scan(struct sdmmc_softc *sc)
 		return;
 	}
 
+	UTL_DEBUG(1, "Function count: %d", sc->sc_function_count);
 	for (i = 1; i <= sc->sc_function_count; i++) {
 		sf = sdmmc_function_alloc(sc);
 		sf->number = i;

@@ -1345,9 +1345,14 @@ rtsx_exec_command(sdmmc_chipset_handle_t sch, struct sdmmc_command *cmd)
 	    BUS_DMASYNC_PREWRITE);
 
 	/* Run the command queue and wait for completion. */
+	UTL_DEBUG(1, "Sending commands to queue (ncmd=%d)...", ncmd);
 	error = rtsx_hostcmd_send(sc, ncmd);
-	if (error == 0)
+	// cholonam: Beware that there must be no debug messages here, otherwise the interrupt (and the wakeup()
+	// it does) will arrive before rtsx_wait_intr and we'll miss it.
+	if (error == 0) {
 		error = rtsx_wait_intr(sc, RTSX_TRANS_OK_INT, 1);
+		if (error) UTL_ERR("rtsx_wait_intr returned error %d", error);
+	}
 	if (error)
 		goto unload_cmdbuf;
 
@@ -1412,6 +1417,8 @@ rtsx_soft_reset(struct rtsx_softc *sc)
 	(void)rtsx_write(sc, RTSX_RBCTL, RTSX_RB_FLUSH, RTSX_RB_FLUSH);
 }
 
+// cholonam: Beware that there must be no debug messages in this method until the tsleep(), otherwise the interrupt
+// (and the wakeup() it does) will arrive before the tsleep and we'll miss it.
 int
 rtsx_wait_intr(struct rtsx_softc *sc, int mask, int secs)
 {
@@ -1424,8 +1431,14 @@ rtsx_wait_intr(struct rtsx_softc *sc, int mask, int secs)
 	s = splsdmmc();
 	status = sc->intr_status & mask;
 	while (status == 0) {
-		if (tsleep_nsec(&sc->intr_status, PRIBIO, "rtsxintr",
-		    SEC_TO_NSEC(secs)) == EWOULDBLOCK) {
+#if __APPLE__
+		splx(s); // cholonam: must release the lock or panic
+#endif
+		auto e = tsleep_nsec(&sc->intr_status, PRIBIO, "rtsxintr", SEC_TO_NSEC(secs));
+#if __APPLE__
+		s = splsdmmc();
+#endif
+		if (e == EWOULDBLOCK) {
 			rtsx_soft_reset(sc);
 			error = ETIMEDOUT;
 			break;
@@ -1502,7 +1515,14 @@ rtsx_intr(void *arg)
 	}
 
 	if (status & (RTSX_TRANS_OK_INT | RTSX_TRANS_FAIL_INT)) {
+		UTL_DEBUG(3, "Intr -> Status received:%s%s",
+			  (status & RTSX_TRANS_OK_INT) ? " OK" : "",
+			  (status & RTSX_TRANS_FAIL_INT) ? " FAIL" : "");
 		sc->intr_status |= status;
+#if DEBUG
+		// Sleep a bit to prevent wakeup being called before the tsleep
+		IOSleep(400); // sleep a bit...
+#endif
 		wakeup(&sc->intr_status);
 	}
 
