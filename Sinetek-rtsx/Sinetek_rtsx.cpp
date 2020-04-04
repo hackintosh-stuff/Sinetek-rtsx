@@ -187,6 +187,7 @@ void Sinetek_rtsx::rtsx_pci_attach()
 
 	/* Get the vendor and try to match on it. */
 	//device_id = provider_->extendedConfigRead16(kIOPCIConfigDeviceID);
+	int flags;
 	switch (device_id) {
 		case PCI_PRODUCT_REALTEK_RTS5209:
 			flags = RTSX_F_5209;
@@ -214,7 +215,7 @@ void Sinetek_rtsx::rtsx_pci_attach()
 
 	if (!error) {
 		//		pci_present_and_attached_ = true;
-		if (this->flags & RTSX_F_SDIO_SUPPORT)
+		if (this->rtsx_softc_original_->flags & RTSX_F_SDIO_SUPPORT)
 			UTL_DEBUG(1, "SDIO detected");
 	} else {
 		UTL_ERR("rtsx_attach returned error %d", error);

@@ -71,10 +71,6 @@ public:
 	struct sdmmc_task	read_task_;
 #endif
 
-	/*
-	 * rtsx_softc variables.
-	 */
-	int		flags;
 #if RTSX_USE_IOLOCK
 	IOLock *		intr_status_lock;
 	IORecursiveLock *	splsdmmc_rec_lock;
