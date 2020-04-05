@@ -381,7 +381,7 @@ void Sinetek_rtsx::blk_attach()
 	// TODO: Return an error when this method fails!
 	printf("rtsx: blk_attach()\n");
 
-	sddisk_ = new SDDisk();
+	sddisk_ = OSTypeAlloc(SDDisk); // equivalent to new SDDisk();
 	UTL_CHK_PTR(sddisk_,);
 	if (!sddisk_->init((struct sdmmc_softc *) rtsx_softc_original_->sdmmc)) { // TODO: Fix this!
 		sddisk_->release();
