@@ -621,11 +621,24 @@ sdmmc_init(struct sdmmc_softc *sc)
 	}
 
 	/* Any good functions left after initialization? */
+#if __APPLE__
+	int found = 0;
+	SIMPLEQ_FOREACH(sf, &sc->sf_head, sf_list) {
+		if (!ISSET(sf->flags, SFF_ERROR))
+			found++;//return 0;
+	}
+	if (found > 0) {
+		UTL_DEBUG_DEF("%d functions were found", found);
+	} else {
+		UTL_ERR("No functions were found");
+	}
+	if (found) return 0;
+#else
 	SIMPLEQ_FOREACH(sf, &sc->sf_head, sf_list) {
 		if (!ISSET(sf->flags, SFF_ERROR))
 			return 0;
 	}
-	UTL_ERR("NO FUNCTIONS WERE FOUND!");
+#endif
 	/* No, we should probably power down the card. */
 	return 1;
 }
