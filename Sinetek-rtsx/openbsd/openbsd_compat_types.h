@@ -21,6 +21,9 @@ typedef struct {
 	// PUBLIC MEMBERS
 	uint64_t                      ds_addr;
 	uint64_t                      ds_len;
+	// PRIVATE MEMBERS
+	void *                        _ds_memDesc;
+	void *                        _ds_memMap;
 } bus_dma_segment_t;
 
 typedef struct {

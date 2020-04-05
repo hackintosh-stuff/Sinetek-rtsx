@@ -10,11 +10,21 @@
 #include "util.h"
 
 typedef struct {
-	IOBufferMemoryDescriptor *memoryDescriptor;
-	IOMemoryMap              *memoryMap;
+	// IOBufferMemoryDescriptor *memoryDescriptor;
+	// IOMemoryMap              *memoryMap;
 } _bus_dma_tag;
 
-_bus_dma_tag _busDmaTag = { nullptr, nullptr };
+// This struct MUST match bus_dma_segment_t
+typedef struct {
+	uint64_t			ds_addr;
+	uint64_t			ds_len;
+	// We store the IOMemoryDescriptor and IOMemoryMap here because we have no other place to store them.
+	// They are store only in the first element of segs (we only support one segment anyway).
+	IOBufferMemoryDescriptor *	_ds_memDesc;
+	IOMemoryMap *			_ds_memMap;
+} _bus_dma_segment_t;
+
+_bus_dma_tag _busDmaTag = {};
 bus_space_tag_t gBusSpaceTag = {};
 bus_dma_tag_t gBusDmaTag = (bus_dma_tag_t) &_busDmaTag;
 
@@ -45,8 +55,8 @@ bus_dma_tag_t gBusDmaTag = (bus_dma_tag_t) &_busDmaTag;
 
 int
 bus_dmamap_create(bus_dma_tag_t tag, bus_size_t size, int nsegments, bus_size_t maxsegsz,
-		  bus_size_t boundary, int flags, bus_dmamap_t *dmamp) {
-	UTL_DEBUG(1, "START");
+		  bus_size_t boundary, int flags, bus_dmamap_t *dmamp)
+{
 	UTL_CHK_PTR(dmamp, EINVAL);
 
 	bus_dmamap_t ret = UTL_MALLOC(bus_dmamap);
@@ -64,22 +74,22 @@ bus_dmamap_create(bus_dma_tag_t tag, bus_size_t size, int nsegments, bus_size_t 
 }
 
 void
-bus_dmamap_destroy(bus_dma_tag_t tag, bus_dmamap_t dmamp) {
-	UTL_DEBUG(1, "START");
+bus_dmamap_destroy(bus_dma_tag_t tag, bus_dmamap_t dmamp)
+{
 	UTL_FREE(dmamp, _bus_dmamap);
 }
 
 int
 bus_dmamap_load(bus_dma_tag_t tag, bus_dmamap_t dmam, void *buf, bus_size_t buflen, struct proc *p, int flags)
 {
-	UTL_ERR("FUNCTION NOT YET IMPLEMENTED!");
-	return ENOTSUP;
+//	UTL_ERR("FUNCTION NOT YET IMPLEMENTED! (nothing to do?)");
+	return 0; // ENOTSUP;
 }
 
 void
 bus_dmamap_unload(bus_dma_tag_t dmat, bus_dmamap_t map)
 {
-	UTL_ERR("FUNCTION NOT YET IMPLEMENTED!");
+//	UTL_ERR("FUNCTION NOT YET IMPLEMENTED!");
 	return;
 }
 
@@ -88,7 +98,6 @@ bus_dmamap_sync(bus_dma_tag_t tag, bus_dmamap_t dmam, bus_addr_t offset, bus_siz
 {
 	// This function should probably call prepare() / complete(), but we already call them in
 	// bus_dmamem_alloc()/bus_dmamem_free()
-	UTL_DEBUG(1, "START");
 	return;
 }
 
@@ -96,20 +105,14 @@ int
 bus_dmamem_alloc(bus_dma_tag_t tag, bus_size_t size, bus_size_t alignment, bus_size_t boundary, bus_dma_segment_t *segs,
 		 int nsegs, int *rsegs, int flags)
 {
-	UTL_DEBUG(1, "START");
 	if (nsegs != 1) return kIOReturnBadArgument; // only one supported for now
-	_bus_dma_tag *_tag = reinterpret_cast<_bus_dma_tag *>(tag);
-	UTL_CHK_PTR(_tag, EINVAL);
-	UTL_CHK_PTR(segs, EINVAL);
+	_bus_dma_segment_t *_segs = reinterpret_cast<_bus_dma_segment_t *>(segs);
+
+	UTL_CHK_PTR(tag, EINVAL);
+	UTL_CHK_PTR(_segs, EINVAL);
 	UTL_CHK_PTR(rsegs, EINVAL);
 
-	auto &memDesc = _tag->memoryDescriptor;
-	if (memDesc) {
-		UTL_ERR("Only one bus_dmamem_alloc is supported (it has to be freed before it is used again)!");
-		return ENOTSUP; // only one dma_alloc
-	}
-
-	memDesc = IOBufferMemoryDescriptor::inTaskWithPhysicalMask(
+	auto *memDesc = IOBufferMemoryDescriptor::inTaskWithPhysicalMask(
 							 kernel_task,
 							 kIODirectionInOut |
 							 kIOMemoryPhysicallyContiguous |
@@ -120,34 +123,35 @@ bus_dmamem_alloc(bus_dma_tag_t tag, bus_size_t size, bus_size_t alignment, bus_s
 
 	IOByteCount len;
 	auto addr = memDesc->getPhysicalSegment(0, &len);
-	if (len != size) {
-		UTL_ERR("len (%d) != size (%d)", (int) len, (int) size);
+	if (len != size || !addr) {
+		UTL_ERR("len=%d, size=%d, addr=" RTSX_PTR_FMT, (int) len, (int) size, RTSX_PTR_FMT_VAR(addr));
 		memDesc->release();
 		memDesc = nullptr;
 		return kIOReturnUnsupported;
 	}
-	segs[0].ds_addr = addr;
-	segs[0].ds_len = len;
-	*rsegs = 1;
 
 	// call prepare here? does this wire the pages?
-	memDesc->prepare();
-	UTL_DEBUG(1, "END");
+	memDesc->prepare(kIODirectionInOut);
+
+	_segs[0].ds_addr = addr;
+	_segs[0].ds_len = len;
+	_segs[0]._ds_memDesc = memDesc;
+	_segs[0]._ds_memMap = nullptr; // check all members are initialized
+	*rsegs = 1;
 	return 0;
 }
 
 void
 bus_dmamem_free(bus_dma_tag_t tag, bus_dma_segment_t *segs, int nsegs)
 {
-	UTL_DEBUG(1, "START");
 	UTL_CHK_PTR(segs,);
 	if (nsegs != 1) return; // only one supported for now
-	_bus_dma_tag *_tag = reinterpret_cast<_bus_dma_tag *>(tag);
-	auto &memDesc = _tag->memoryDescriptor;
+	_bus_dma_segment_t *_segs = reinterpret_cast<_bus_dma_segment_t *>(segs);
+	auto &memDesc = _segs[0]._ds_memDesc; // we use a referece because we may set it to null
 	if (!memDesc) return;
 
 	// complete and release
-	memDesc->complete();
+	memDesc->complete(kIODirectionInOut);
 	memDesc->release();
 	memDesc = nullptr;
 }
@@ -155,33 +159,30 @@ bus_dmamem_free(bus_dma_tag_t tag, bus_dma_segment_t *segs, int nsegs)
 int
 bus_dmamem_map(bus_dma_tag_t tag, bus_dma_segment_t *segs, int nsegs, size_t size, caddr_t *kvap, int flags)
 {
-	UTL_DEBUG(1, "START");
-	UTL_CHK_PTR(segs, EINVAL);
 	if (nsegs != 1) return ENOTSUP; // only one supported for now
 	_bus_dma_tag *_tag = reinterpret_cast<_bus_dma_tag *>(tag);
+	_bus_dma_segment_t *_segs = reinterpret_cast<_bus_dma_segment_t *>(segs);
 	UTL_CHK_PTR(_tag, EINVAL);
+	UTL_CHK_PTR(_segs, EINVAL);
 	UTL_CHK_PTR(kvap, EINVAL);
 
-	auto memDesc = _tag->memoryDescriptor;
+	auto memDesc = _segs[0]._ds_memDesc;
 	if (!memDesc) return EINVAL;
-	if (_tag->memoryMap) return ENOTSUP;
+	if (_segs[0]._ds_memMap) return ENOTSUP;
 
-	_tag->memoryMap = memDesc->map();
-	if (!_tag->memoryMap) {
+	_segs[0]._ds_memMap = memDesc->map();
+	if (!_segs[0]._ds_memMap) {
 		UTL_ERR("memoryDescriptor->map() returned null!");
 		return ENOMEM;
 	}
 
-	*kvap = (caddr_t) _tag->memoryMap->getAddress(); // getVirtualAddress();
+	*kvap = (caddr_t) _segs[0]._ds_memMap->getAddress(); // getVirtualAddress();
 	return 0;
 }
 
 void
 bus_dmamem_unmap(bus_dma_tag_t tag, void *kva, size_t size)
 {
-	UTL_DEBUG(1, "START");
-	_bus_dma_tag *_tag = reinterpret_cast<_bus_dma_tag *>(tag);
 
-	_tag->memoryMap->release();
-	_tag->memoryMap = nullptr;
+	// TODO: How to release memory map here?
 }
