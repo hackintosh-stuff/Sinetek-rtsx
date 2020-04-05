@@ -37,7 +37,7 @@ static IOSimpleLock *getGlobalLock()
 {
 	if (!globalLock) {
 		// TODO: There is a race condition here! (globalLock must be initialized before we create the thread).
-		UTL_DEBUG(0, "Allocating global IOSimpleLock");
+		UTL_DEBUG_MEM("Allocating global IOSimpleLock");
 		globalLock = IOSimpleLockAlloc();
 	}
 	return globalLock;

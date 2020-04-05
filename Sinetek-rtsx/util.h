@@ -36,13 +36,13 @@
 })
 
 #if DEBUG
-#define UTL_DEBUG_LEVEL 3
 #ifndef UTL_DEBUG_LEVEL
-#	define UTL_DEBUG_LEVEL 1 // only 0-level messages
+#	define UTL_DEBUG_LEVEL 0x01 // only default messages
 #endif
+
 #define UTL_DEBUG(lvl, fmt, ...) \
 do { \
-	if (lvl < UTL_DEBUG_LEVEL) { \
+	if (lvl & UTL_DEBUG_LEVEL) { \
 		os_log_debug(OS_LOG_DEFAULT, "rtsx:\t%14s%-22s: " fmt "\n", \
 		UTL_THIS_CLASS, __func__, ##__VA_ARGS__); \
 		if (UTL_LOG_DELAY_MS) IOSleep(UTL_LOG_DELAY_MS); /* Wait for log to appear... */ \
@@ -51,6 +51,22 @@ do { \
 #else // DEBUG
 #define UTL_DEBUG(lvl, fmt, ...) do { } while (0)
 #endif // DEBUG
+
+// Debug levels
+#define UTL_DEBUG_LVL_DEF	0x01 // Default debug message
+#define UTL_DEBUG_LVL_CMD	0x02 // Commands sent to controller
+#define UTL_DEBUG_LVL_MEM	0x04 // Memory allocations/releases
+#define UTL_DEBUG_LVL_FUN	0x08 // Function calls/entry/exit
+#define UTL_DEBUG_LVL_INT	0x10 // Interrupts received
+#define UTL_DEBUG_LVL_LOOP	0x20 // For loops that may get too verbose
+
+
+#define UTL_DEBUG_DEF(...)  UTL_DEBUG(UTL_DEBUG_LVL_DEF,  "[DEF] " __VA_ARGS__)
+#define UTL_DEBUG_CMD(...)  UTL_DEBUG(UTL_DEBUG_LVL_CMD,  "[CMD] " __VA_ARGS__)
+#define UTL_DEBUG_MEM(...)  UTL_DEBUG(UTL_DEBUG_LVL_MEM,  "[MEM] " __VA_ARGS__)
+#define UTL_DEBUG_FUN(...)  UTL_DEBUG(UTL_DEBUG_LVL_FUN,  "[FUN] " __VA_ARGS__)
+#define UTL_DEBUG_INT(...)  UTL_DEBUG(UTL_DEBUG_LVL_INT,  "[INT] " __VA_ARGS__)
+#define UTL_DEBUG_LOOP(...) UTL_DEBUG(UTL_DEBUG_LVL_LOOP, "[LOOP] " __VA_ARGS__)
 
 #if DEBUG || SDMMC_DEBUG
 static inline const char *mmcCmd2str(uint16_t mmcCmd) {
@@ -90,12 +106,12 @@ if (!(ptr)) { \
 #if RTSX_USE_IOMALLOC
 #define UTL_MALLOC(TYPE) (TYPE *) UTLMalloc(#TYPE, sizeof(TYPE))
 static inline void *UTLMalloc(const char *type, size_t sz) {
-    UTL_DEBUG(0, "Allocating a %s (%u bytes).", type, (unsigned) sz);
+    UTL_DEBUG_MEM("Allocating a %s (%u bytes).", type, (unsigned) sz);
     return IOMalloc(sz);
 }
 #define UTL_FREE(ptr, TYPE) \
 do { \
-	UTL_DEBUG(0, "Freeing a %s (%u bytes).", #TYPE, (unsigned) sizeof(TYPE)); \
+	UTL_DEBUG_MEM("Freeing a %s (%u bytes).", #TYPE, (unsigned) sizeof(TYPE)); \
 	IOFree(ptr, sizeof(TYPE)); \
 } while (0)
 #else // RTSX_USE_IOMALLOC
@@ -145,7 +161,7 @@ static inline void dumpBuffer(IOMemoryDescriptor *md) {
 	while (thisOffset < len) {
 		uint64_t thisSegLen;
 		auto addr = md->getPhysicalSegment(thisOffset, &thisSegLen, kIOMemoryMapperNone | md->getDirection());
-		UTL_DEBUG(0, " - Segment: Addr: 0x%016llx Len: %llu", addr, thisSegLen);
+		UTL_DEBUG_DEF(" - Segment: Addr: 0x%016llx Len: %llu", addr, thisSegLen);
 		if (!addr) return;
 		thisOffset += thisSegLen;
 	}

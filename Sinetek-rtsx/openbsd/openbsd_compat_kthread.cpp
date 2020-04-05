@@ -22,7 +22,7 @@ static void my_thread_continue(void *arg, wait_result_t wait_result)
 
 	UTL_CHK_PTR(myArg,);
 
-	UTL_DEBUG(1, "Thred created (wait_result=%d), calling OpenBSD function...", (int) wait_result);
+	UTL_DEBUG_DEF("Thred created (wait_result=%d), calling OpenBSD function...", (int) wait_result);
 	// Call OpenBSD thread
 	myArg->func(myArg->arg);
 	UTL_LOG("OpenBSD thread function returned!");
@@ -35,7 +35,7 @@ kthread_create(void (*func)(void *), void *arg, struct proc **newpp, const char 
 {
 	int ret;
 
-	UTL_DEBUG(1, "Creating new thread (name=%s)...", name);
+	UTL_DEBUG_DEF("Creating new thread (name=%s)...", name);
 	auto myArg = UTL_MALLOC(struct MyArgStruct); // TODO: Where do we free this?
 	UTL_CHK_PTR(myArg, ENOMEM);
 
@@ -63,7 +63,7 @@ kthread_create_deferred(void (*func)(void *), void *arg)
 void __attribute__((noreturn))
 kthread_exit(int ecode)
 {
-	UTL_DEBUG(3, "Calling thread_terminate() (should not return)");
+	UTL_DEBUG_FUN("Calling thread_terminate() (should not return)");
 	thread_terminate(current_thread());
 	UTL_ERR("thread_terminate() returned! Looping...");
 	while(1) {}

@@ -189,12 +189,12 @@ rtsx_attach(struct rtsx_softc *sc, bus_space_tag_t iot,
 	sc->dmat = dmat;
 	sc->flags = flags;
 
-	UTL_DEBUG(1, "Calling rtsx_init...");
+	UTL_DEBUG_FUN("Calling rtsx_init...");
 	if (rtsx_init(sc, 1)) {
 		UTL_ERR("rtsx_init failed!");
 		return 1;
 	}
-	UTL_DEBUG(1, "rtsx_init returned");
+	UTL_DEBUG_FUN("rtsx_init returned");
 
 	if (rtsx_read_cfg(sc, 0, RTSX_SDIOCFG_REG, &sdio_cfg) == 0) {
 		if ((sdio_cfg & RTSX_SDIOCFG_SDIO_ONLY) ||
@@ -1345,7 +1345,7 @@ rtsx_exec_command(sdmmc_chipset_handle_t sch, struct sdmmc_command *cmd)
 	    BUS_DMASYNC_PREWRITE);
 
 	/* Run the command queue and wait for completion. */
-	UTL_DEBUG(1, "Sending commands to queue (ncmd=%d)...", ncmd);
+	UTL_DEBUG_CMD("Sending commands to queue (ncmd=%d)...", ncmd);
 	error = rtsx_hostcmd_send(sc, ncmd);
 	// cholonam: Beware that there must be no debug messages here, otherwise the interrupt (and the wakeup()
 	// it does) will arrive before rtsx_wait_intr and we'll miss it.
@@ -1515,9 +1515,9 @@ rtsx_intr(void *arg)
 	}
 
 	if (status & (RTSX_TRANS_OK_INT | RTSX_TRANS_FAIL_INT)) {
-		UTL_DEBUG(3, "Intr -> Status received:%s%s",
-			  (status & RTSX_TRANS_OK_INT) ? " OK" : "",
-			  (status & RTSX_TRANS_FAIL_INT) ? " FAIL" : "");
+		UTL_DEBUG_INT("Intr -> Status received:%s%s",
+			      (status & RTSX_TRANS_OK_INT) ? " OK" : "",
+			      (status & RTSX_TRANS_FAIL_INT) ? " FAIL" : "");
 		sc->intr_status |= status;
 #if DEBUG
 		// Sleep a bit to prevent wakeup being called before the tsleep

@@ -42,10 +42,10 @@ struct device *config_attach(struct device *parent, void *match, void *aux, cfpr
 
 	int32_t devSize = (int32_t) this_cfdata->cf_attach->ca_devsize;
 	// allocate memory (TODO: check that it is freed on detach)
-	UTL_DEBUG(2, "Allocating %d bytes...", devSize);
+	UTL_DEBUG_MEM("Allocating %d bytes...", devSize);
 	ret = (struct device *) IOMalloc(devSize);
 	UTL_CHK_PTR(ret, nullptr);
-	UTL_DEBUG(2, "Memory allocated => " RTSX_PTR_FMT, RTSX_PTR_FMT_VAR(ret));
+	UTL_DEBUG_MEM("Memory allocated => " RTSX_PTR_FMT, RTSX_PTR_FMT_VAR(ret));
 	bzero(ret, devSize);
 	ret->dv_flags = DVF_ACTIVE; // used by deactivate
 
@@ -60,7 +60,7 @@ struct device *config_attach(struct device *parent, void *match, void *aux, cfpr
 
 	// call attach (and activate?)
 	UTL_CHK_PTR(this_cfdata->cf_attach->ca_attach, nullptr);
-	UTL_DEBUG(1, "Calling ca_attach...");
+	UTL_DEBUG_FUN("Calling ca_attach...");
 	this_cfdata->cf_attach->ca_attach(parent, (struct device *) ret, aux);
 
 	return (struct device *) ret;
@@ -73,15 +73,15 @@ struct device *config_attach(struct device *parent, void *match, void *aux, cfpr
 ///                             a submatch function (sdmmc_submatch)
 struct device *config_found_sm(struct device *parent, void *aux, cfprint_t print, cfmatch_t submatch)
 {
-	UTL_DEBUG(1, "START");
+	UTL_DEBUG_FUN("START");
 	// check all members...
 	for (int i = 0; i < sizeof(my_cfdata) / sizeof(my_cfdata[0]); i++) {
-		UTL_DEBUG(1, "Trying my_cfdata[%d]...", i);
+		UTL_DEBUG_LOOP("Trying my_cfdata[%d]...", i);
 		if (!my_cfdata[i].cf_attach) continue;
 
-		UTL_DEBUG(2, "Calling ca_match...");
+		UTL_DEBUG_LOOP("Calling ca_match...");
 		if (my_cfdata[i].cf_attach->ca_match(parent, my_cfdata + i, aux)) {
-			UTL_DEBUG(1, "Match found. Calling config_attach...");
+			UTL_DEBUG_DEF("Match found. Calling config_attach...");
 			return config_attach(parent, &my_cfdata[i], aux, print);
 		}
 	}
@@ -105,16 +105,16 @@ int config_detach(struct device *dev, int flags)
 
 	struct cfattach *cf_attach = dev->dv_cfdata->cf_attach;
 
-	UTL_DEBUG(1, "Detaching %s device", dev->dv_xname);
+	UTL_DEBUG_DEF("Detaching %s device", dev->dv_xname);
 
 	// call deactivate
 	ret = config_deactivate(dev);
 	if (ret == 0) {
 		// call detach
 		if (cf_attach && cf_attach->ca_detach) {
-			UTL_DEBUG(2, "Calling detach function...");
+			UTL_DEBUG_FUN("Calling detach function...");
 			ret = cf_attach->ca_detach(dev, flags);
-			UTL_DEBUG(2, "Detach function returns");
+			UTL_DEBUG_FUN("Detach function returns");
 		} else {
 			UTL_ERR("Null detach function not supported yet!");
 			ret = ENOTSUP;
@@ -124,7 +124,7 @@ int config_detach(struct device *dev, int flags)
 	// TODO: Check OpenBSD code. It does more processing here...
 	
 	uint32_t devSize = (uint32_t) cf_attach->ca_devsize;
-	UTL_DEBUG(2, "Freeing %d bytes at " RTSX_PTR_FMT, devSize, RTSX_PTR_FMT_VAR(dev));
+	UTL_DEBUG_MEM("Freeing %d bytes at " RTSX_PTR_FMT, devSize, RTSX_PTR_FMT_VAR(dev));
 	IOFree(dev, devSize);
 	return ret;
 }

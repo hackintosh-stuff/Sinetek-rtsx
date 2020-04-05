@@ -176,24 +176,24 @@ sdmmc_attach(struct device *parent, struct device *self, void *aux)
 int
 sdmmc_detach(struct device *self, int flags)
 {
-	UTL_DEBUG(3, "START");
+	UTL_DEBUG_FUN("START");
 	struct sdmmc_softc *sc = (struct sdmmc_softc *)self;
 
 	sc->sc_dying = 1;
 	while (sc->sc_task_thread != NULL) {
-		UTL_DEBUG(3, "Waking up worker...");
+		UTL_DEBUG_LOOP("Waking up worker...");
 		wakeup(&sc->sc_tskq);
-		UTL_DEBUG(3, "Waiting for worker...");
+		UTL_DEBUG_LOOP("Waiting for worker...");
 		// Is there a race condition here?s
 		tsleep_nsec(sc, PWAIT, "mmcdie", INFSLP);
-		UTL_DEBUG(4, "Done?");
+		UTL_DEBUG_LOOP("Done?");
 	}
-	UTL_DEBUG(3, "Done!");
+	UTL_DEBUG_LOOP("Done!");
 
 	if (sc->sc_dmap)
 		bus_dmamap_destroy(sc->sc_dmat, sc->sc_dmap);
 
-	UTL_DEBUG(3, "END");
+	UTL_DEBUG_FUN("END");
 	return 0;
 }
 
@@ -249,7 +249,7 @@ sdmmc_task_thread(void *arg)
 	int s;
 
 restart:
-	UTL_DEBUG(1, "Calling sdmmc_needs_discover...");
+	UTL_DEBUG_FUN("Calling sdmmc_needs_discover...");
 	sdmmc_needs_discover(&sc->sc_dev);
 
 	s = splsdmmc();
@@ -257,14 +257,13 @@ restart:
 		for (task = TAILQ_FIRST(&sc->sc_tskq); task != NULL;
 		     task = TAILQ_FIRST(&sc->sc_tskq)) {
 			splx(s);
-			UTL_DEBUG(1, "Calling sdmmc_del_task...");
+			UTL_DEBUG_LOOP("Calling sdmmc_del_task...");
 			sdmmc_del_task(task);
-			UTL_DEBUG(1, "Calling func...");
+			UTL_DEBUG_LOOP("Calling func...");
 			task->func(task->arg);
-			UTL_DEBUG(1, "func returns");
+			UTL_DEBUG_LOOP("func returns");
 			s = splsdmmc();
 		}
-		UTL_DEBUG(1, "Calling tsleep_nsec...");
 #if __APPLE__
 		// This is sleeping with a lock held!!!
 		splx(s); // release the lock before waiting
@@ -276,15 +275,15 @@ restart:
 	}
 	splx(s);
 
-	UTL_DEBUG(1, "sdmmc is dying (%d)...", sc->sc_dying);
+	UTL_DEBUG_DEF("sdmmc is dying (%d)...", sc->sc_dying);
 
 	if (ISSET(sc->sc_flags, SMF_CARD_PRESENT)) {
-		UTL_DEBUG(1, "Card present. Detaching...");
+		UTL_DEBUG_DEF("Card present. Detaching...");
 		rw_enter_write(&sc->sc_lock);
 		sdmmc_card_detach(sc, DETACH_FORCE);
 		rw_exit(&sc->sc_lock);
 	} else {
-		UTL_DEBUG(1, "Card not present. Not detaching.");
+		UTL_DEBUG_DEF("Card not present. Not detaching.");
 	}
 
 	/*
@@ -298,7 +297,7 @@ restart:
 	}
 	sc->sc_task_thread = NULL;
 	wakeup(sc);
-	UTL_DEBUG(1, "sdmmc_task_thread exitting...");
+	UTL_DEBUG_DEF("sdmmc_task_thread exitting...");
 	kthread_exit(0);
 }
 

@@ -160,7 +160,7 @@ sdmmc_io_scan(struct sdmmc_softc *sc)
 		return;
 	}
 
-	UTL_DEBUG(1, "Function count: %d", sc->sc_function_count);
+	UTL_DEBUG_DEF("Function count: %d", sc->sc_function_count);
 	for (i = 1; i <= sc->sc_function_count; i++) {
 		sf = sdmmc_function_alloc(sc);
 		sf->number = i;
@@ -248,7 +248,7 @@ sdmmc_io_function_enable(struct sdmmc_function *sf)
 	rv |= (1<<sf->number);
 	sdmmc_io_write_1(sf0, SD_IO_CCCR_FN_ENABLE, rv);
 
-	// TODO: Implement this one-second timer
+	// TODO: Implement this one-second timer (so far it is not used)
 	UTL_ERR("IMPLEMENT THIS!!!!!!\n");
 	while (!sdmmc_io_function_ready(sf) && retry-- > 0)
 		tsleep_nsec(&lbolt, PPAUSE, "pause", INFSLP);
@@ -296,7 +296,7 @@ sdmmc_io_attach(struct sdmmc_softc *sc)
 		sf->child = config_found_sm(&sc->sc_dev, &saa, sdmmc_print,
 		    sdmmc_submatch);
 	}
-	UTL_DEBUG(1, "END");
+	UTL_DEBUG_FUN("END");
 }
 
 int
