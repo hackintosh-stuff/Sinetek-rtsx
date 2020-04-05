@@ -20,21 +20,27 @@ function checkDate() {
 	local D2=`date -r $F2 \+%s`
 
 	if [ $D2 -le $D1 ]; then
-		echo "Warning: Copying an older or same date kext!"
+		return 1
 	fi
 }
 
 
 # copy and set uid/gid
 if [ -d "$KPATH/$KEXT" ]; then
-	echo "Copying from Xcode's DerivedData..."
-	checkDate "$KEXT/$BINPATH" "$KPATH/$KEXT/$BINPATH"
-	sudo rm -rf "$KEXT"
-	cp -rp "$KPATH/$KEXT" ./
+	if checkDate "$KEXT/$BINPATH" "$KPATH/$KEXT/$BINPATH"; then
+		echo "Copying from Xcode's DerivedData..."
+		sudo rm -rf "$KEXT"
+		cp -rp "$KPATH/$KEXT" ./
+	else
+		echo "Not copying (same or older kext)!"
+	fi
 elif [ -d "$KPATH2/$KEXT" ]; then
-	echo "Copying from project-local DerivedData..."
-	checkDate "$KEXT/$BINPATH" "$KPATH2/$KEXT/$BINPATH"
-	sudo rm -rf "$KEXT"
-	cp -rp "$KPATH2/$KEXT" ./
+	if checkDate "$KEXT/$BINPATH" "$KPATH2/$KEXT/$BINPATH"; then
+		echo "Copying from project-local DerivedData..."
+		sudo rm -rf "$KEXT"
+		cp -rp "$KPATH2/$KEXT" ./
+	else
+		echo "Not copying (same or older kext)!"
+	fi
 fi
 sudo chown -R root:wheel "$KEXT"
