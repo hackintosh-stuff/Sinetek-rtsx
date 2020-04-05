@@ -23,7 +23,9 @@ int tsleep(void *ident, int priority, const char *wmesg, int timo)
 	}
 	UTL_DEBUG_FUN("%s: Calling msleep(%d/%d) (this may crash if lock is held)...", wmesg, (int) ts.tv_sec, (int) ts.tv_nsec);
 	auto ret = msleep(ident, nullptr, priority, wmesg, &ts);
-	UTL_DEBUG_FUN("%s: msleep returned %d (%s)", wmesg, ret, ret == EWOULDBLOCK ? "Timeout" : "?");
+	UTL_DEBUG_FUN("%s: msleep returned %d (%s)", wmesg, ret,
+		      ret == EWOULDBLOCK ? "Timeout" :
+		      ret == 0 ? "OK" : "?");
 	return ret;
 }
 
@@ -36,6 +38,8 @@ int tsleep_nsec(void *ident, int priority, const char *wmesg, uint64_t nsecs)
 	}
 	UTL_DEBUG_FUN("%s: Calling msleep(%d/%d) (this may crash if lock is held)...", wmesg, (int) ts.tv_sec, (int) ts.tv_nsec);
 	auto ret = msleep(ident, nullptr, priority, wmesg, &ts);
-	UTL_DEBUG_FUN("%s: msleep returned %d (%s)", wmesg, ret, ret == EWOULDBLOCK ? "Timeout" : "?");
+	UTL_DEBUG_FUN("%s: msleep returned %d (%s)", wmesg, ret,
+		      ret == EWOULDBLOCK ? "Timeout" :
+		      ret == 0 ? "OK" : "?");
 	return ret;
 }

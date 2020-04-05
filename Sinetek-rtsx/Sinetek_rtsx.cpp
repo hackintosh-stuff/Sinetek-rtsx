@@ -149,7 +149,6 @@ static void trampoline_intr(OSObject *ih, IOInterruptEventSource *ies, int count
 void Sinetek_rtsx::rtsx_pci_attach()
 {
 	uint device_id;
-	//uint32_t flags;
 	int bar = RTSX_PCI_BAR;
 
 	UTL_DEBUG_FUN("START");
@@ -168,8 +167,15 @@ void Sinetek_rtsx::rtsx_pci_attach()
 	if (device_id == PCI_PRODUCT_REALTEK_RTS525A)
 		bar = RTSX_PCI_BAR_525A;
 	map_ = provider_->mapDeviceMemoryWithRegister(bar);
-	if (!map_) return;
+	if (!map_) {
+		UTL_ERR("Could not get device memory map!");
+		return;
+	}
 	memory_descriptor_ = map_->getMemoryDescriptor();
+	if (!memory_descriptor_) {
+		UTL_ERR("Could not get device memory descriptor!");
+		return;
+	}
 
 	/* Map device interrupt. */
 #if RTSX_USE_IOFIES
@@ -207,7 +213,7 @@ void Sinetek_rtsx::rtsx_pci_attach()
 	}
 
 	UTL_CHK_PTR(this->rtsx_softc_original_,);
-	UTL_DEBUG_DEF("Calling attach...");
+	UTL_DEBUG_DEF("Calling attach%s...", (flags & RTSX_F_525A) ? " (525A detected)" : "");
 	int error = ::rtsx_attach(this->rtsx_softc_original_, gBusSpaceTag,
 				  (bus_space_handle_t) memory_descriptor_,
 				  0/* ignored */,
@@ -414,6 +420,7 @@ static uint32_t READ4(Sinetek_rtsx *sc, IOByteCount reg) {
 
 /// This function runs in interrupt context, meaning that IOLog CANNOT be used (only basic functionality is available).
 bool Sinetek_rtsx::is_my_interrupt(OSObject *arg, IOFilterInterruptEventSource *source) {
+	// Can't use UTL_CHK_PTR here because we can't log
 	if (!arg) return false;
 
 	Sinetek_rtsx *sc = OSDynamicCast(Sinetek_rtsx, arg);
