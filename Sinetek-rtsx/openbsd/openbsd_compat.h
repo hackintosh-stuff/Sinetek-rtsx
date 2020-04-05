@@ -38,7 +38,7 @@ __END_DECLS
 #endif // RTSX_USE_IOLOCK
 
 // disable execcisve logging from OpenBSD code
-#if DEBUG
+#if OPENBSD_CODE_DEBUG
 #define printf(...) UTL_DEBUG_DEF(__VA_ARGS__)
 #else
 #define printf(...) do {} while (0)
