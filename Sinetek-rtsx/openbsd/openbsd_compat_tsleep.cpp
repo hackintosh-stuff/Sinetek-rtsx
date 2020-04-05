@@ -6,7 +6,6 @@
 #include "util.h"
 
 extern int hz;
-int lbolt; // TODO: Need to implement a 1-second timer here, but it's not worth the effort (probably unused).
 
 // we need to implement these two in terms of msleep, which is what macOS provides...
 // See: https://github.com/apple/darwin-xnu/blob/master/bsd/kern/kern_synch.c

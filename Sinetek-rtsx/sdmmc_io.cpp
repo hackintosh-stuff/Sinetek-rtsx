@@ -231,6 +231,8 @@ sdmmc_io_function_ready(struct sdmmc_function *sf)
  * Enable the I/O function.  Return zero if the function was
  * enabled successfully.
  */
+#if !__APPLE__
+// cholonam: lbolt is a 1-second interval timer, but we don't really need it, because this function is not even called.
 int
 sdmmc_io_function_enable(struct sdmmc_function *sf)
 {
@@ -248,12 +250,11 @@ sdmmc_io_function_enable(struct sdmmc_function *sf)
 	rv |= (1<<sf->number);
 	sdmmc_io_write_1(sf0, SD_IO_CCCR_FN_ENABLE, rv);
 
-	// TODO: Implement this one-second timer (so far it is not used)
-	UTL_ERR("IMPLEMENT THIS!!!!!!\n");
 	while (!sdmmc_io_function_ready(sf) && retry-- > 0)
 		tsleep_nsec(&lbolt, PPAUSE, "pause", INFSLP);
 	return (retry >= 0) ? 0 : ETIMEDOUT;
 }
+#endif
 
 /*
  * Disable the I/O function.  Return zero if the function was
