@@ -153,16 +153,17 @@ sdmmc_mem_scan(struct sdmmc_softc *sc)
 		bzero(&cmd, sizeof cmd);
 		cmd.c_opcode = MMC_ALL_SEND_CID;
 		cmd.c_flags = SCF_CMD_BCR | SCF_RSP_R2;
-		
+
 		error = sdmmc_mmc_command(sc, &cmd);
 		if (error == ETIMEDOUT) {
 			/* No more cards there. */
+			UTL_DEBUG_DEF("NO MORE CARDS! (i = %d)", i);
 			break;
 		} else if (error != 0) {
 			DPRINTF(("%s: can't read CID\n", DEVNAME(sc)));
 			break;
 		}
-		
+
 		/* In MMC mode, find the next available RCA. */
 		next_rca = 1;
 		if (!ISSET(sc->sc_flags, SMF_SD_MODE))
@@ -400,8 +401,8 @@ sdmmc_mem_decode_scr(struct sdmmc_softc *sc, uint32_t *raw_scr,
 		 ver, sf->scr.sd_spec, sf->scr.bus_width));
 	
 	if (ver != 0) {
-		DPRINTF(("%s: unknown SCR structure version: %d\n",
-			 DEVNAME(sc), ver));
+		UTL_ERR("%s: unknown SCR structure version: %d\n",
+		    DEVNAME(sc), ver);
 		return EINVAL;
 	}
 	return 0;
@@ -604,9 +605,11 @@ sdmmc_mem_sd_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 		return error;
 	}
 	error = sdmmc_mem_decode_scr(sc, raw_scr, sf);
-	if (error)
+	if (error) {
+		UTL_ERR("DECODE SCR FAILED!");
 		return error;
-	
+	}
+
 	if (ISSET(sc->sc_caps, SMC_CAPS_4BIT_MODE) &&
 	    ISSET(sf->scr.bus_width, SCR_SD_BUS_WIDTHS_4BIT)) {
 		DPRINTF(("%s: change bus width\n", DEVNAME(sc)));
