@@ -22,7 +22,7 @@ static void my_thread_continue(void *arg, wait_result_t wait_result)
 
 	UTL_CHK_PTR(myArg,);
 
-	UTL_DEBUG_DEF("Thred created (wait_result=%d), calling OpenBSD function...", (int) wait_result);
+	UTL_DEBUG_DEF("Thread created (wait_result=%d), calling OpenBSD function...", (int) wait_result);
 	// Call OpenBSD thread
 	myArg->func(myArg->arg);
 	UTL_LOG("OpenBSD thread function returned!");

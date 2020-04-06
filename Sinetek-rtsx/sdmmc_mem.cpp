@@ -414,9 +414,11 @@ sdmmc_mem_decode_scr(struct sdmmc_softc *sc, uint32_t *raw_scr,
 	    ver, sf->scr.sd_spec, sf->scr.bus_width));
 
 	if (ver != 0) {
-		DPRINTF(("%s: unknown SCR structure version: %d\n",
-		    DEVNAME(sc), ver));
+		UTL_ERR("%s: unknown SCR structure version: %d\n",
+		    DEVNAME(sc), ver);
 		return EINVAL;
+	} else {
+		UTL_LOG("SCR structure version 0 (GOOD!)");
 	}
 	return 0;
 }

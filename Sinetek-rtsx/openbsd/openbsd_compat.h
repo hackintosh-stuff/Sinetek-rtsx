@@ -114,8 +114,6 @@ static inline void delay(unsigned int microseconds) {
 	IODelay(microseconds);
 }
 
-#define RTSX_F_525A          0x20
-
 #define RTSX_PCI_BAR         0x10
 #define RTSX_PCI_BAR_525A    0x14
 /* syscl - end of 1.4-1.5 change */
