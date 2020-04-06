@@ -183,8 +183,7 @@ sdmmc_detach(struct device *self, int flags)
 	while (sc->sc_task_thread != NULL) {
 		UTL_DEBUG_LOOP("Waking up worker...");
 		wakeup(&sc->sc_tskq);
-		UTL_DEBUG_LOOP("Waiting for worker...");
-		// Is there a race condition here?s
+		// cholonam: can't log here or will miss the wakeup()
 		tsleep_nsec(sc, PWAIT, "mmcdie", INFSLP);
 		UTL_DEBUG_LOOP("Done?");
 	}
@@ -901,10 +900,10 @@ sdmmc_dump_command(struct sdmmc_softc *sc, struct sdmmc_command *cmd)
 
 	rw_assert_wrlock(&sc->sc_lock);
 
-	DPRINTF(1,("%s: cmd %u arg=%#x data=%p dlen=%d flags=%#x "
+	UTL_DEBUG_CMD("%s: cmd %u arg=%#x data=%p dlen=%d flags=%#x "
 	    "proc=\"%s\" (error %d)\n", DEVNAME(sc), cmd->c_opcode,
 	    cmd->c_arg, cmd->c_data, cmd->c_datalen, cmd->c_flags,
-	    curproc ? curproc->p_p->ps_comm : "", cmd->c_error));
+	    curproc ? curproc->p_p->ps_comm : "", cmd->c_error);
 
 	if (cmd->c_error || sdmmcdebug < 1)
 		return;
@@ -918,6 +917,6 @@ sdmmc_dump_command(struct sdmmc_softc *sc, struct sdmmc_command *cmd)
 	else if (ISSET(cmd->c_flags, SCF_RSP_PRESENT))
 		for (i = 0; i < 4; i++)
 			bi += scnprintf(buf + bi, 100 - bi, "%02x ", ((u_char *)cmd->c_resp)[i]);
-	printf("%s\n", buf);
+	UTL_DEBUG_CMD("%s\n", buf);
 }
 #endif

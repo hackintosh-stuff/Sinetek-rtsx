@@ -768,6 +768,7 @@ rtsx_read(struct rtsx_softc *sc, u_int16_t addr, u_int8_t *val)
 	}
 
 	*val = (reg & 0xff);
+	if (!tries) UTL_ERR("Returning ETIMEDOUT (addr=0x%04x)!", addr);
 	return (tries == 0) ? ETIMEDOUT : 0;
 }
 
@@ -791,6 +792,7 @@ rtsx_write(struct rtsx_softc *sc, u_int16_t addr, u_int8_t mask, u_int8_t val)
 		}
 	}
 
+	UTL_ERR("Returning ETIMEDOUT (addr=0x%04x mask=0x%02x val=0x%02x)!", addr, mask, val);
 	return ETIMEDOUT;
 }
 
@@ -863,8 +865,10 @@ rtsx_read_cfg(struct rtsx_softc *sc, u_int8_t func, u_int16_t addr,
 			break;
 	}
 
-	if (tries == 0)
+	if (tries == 0) {
+		UTL_ERR("Returning EIO!");
 		return EIO;
+	}
 	
 	RTSX_READ(sc, RTSX_CFGDATA0, &data0);
 	RTSX_READ(sc, RTSX_CFGDATA1, &data1);
@@ -1351,7 +1355,8 @@ rtsx_exec_command(sdmmc_chipset_handle_t sch, struct sdmmc_command *cmd)
 	// it does) will arrive before rtsx_wait_intr and we'll miss it.
 	if (error == 0) {
 		error = rtsx_wait_intr(sc, RTSX_TRANS_OK_INT, 1);
-		if (error) UTL_ERR("rtsx_wait_intr returned error %d", error);
+		if (error) UTL_ERR("Executing sdmmc cmd %d: rtsx_wait_intr returned error %d%s", cmd->c_opcode,
+				   error, error == 60 ? " (Timeout)" : "");
 	}
 	if (error)
 		goto unload_cmdbuf;
@@ -1519,7 +1524,7 @@ rtsx_intr(void *arg)
 			      (status & RTSX_TRANS_OK_INT) ? " OK" : "",
 			      (status & RTSX_TRANS_FAIL_INT) ? " FAIL" : "");
 		sc->intr_status |= status;
-#if DEBUG
+#if UTL_LOG_DELAY_MS > 0
 		// Sleep a bit to prevent wakeup being called before the tsleep
 		IOSleep(400); // sleep a bit...
 #endif

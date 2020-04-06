@@ -137,6 +137,7 @@ sdmmc_io_enable(struct sdmmc_softc *sc)
 void
 sdmmc_io_scan(struct sdmmc_softc *sc)
 {
+	UTL_DEBUG_FUN("START");
 	struct sdmmc_function *sf0, *sf;
 	int i;
 
@@ -169,6 +170,7 @@ sdmmc_io_scan(struct sdmmc_softc *sc)
 
 		SIMPLEQ_INSERT_TAIL(&sc->sf_head, sf, sf_list);
 	}
+	UTL_DEBUG_FUN("END");
 }
 
 /*
