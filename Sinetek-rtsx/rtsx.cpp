@@ -256,6 +256,7 @@ destroy_cmd:
 	return 1;
 }
 
+// cholonam: See linux function rtsx_pci_init_hw
 int
 rtsx_init(struct rtsx_softc *sc, int attaching)
 {
@@ -318,15 +319,25 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 	/* Disable card clock. */
 	RTSX_CLR(sc, RTSX_CARD_CLK_EN, RTSX_CARD_CLK_EN_ALL);
 
+#if RTSX_MIMIC_LINUX
+	RTSX_CLR(sc, RTSX_CHANGE_LINK_STATE,
+	    RTSX_FORCE_RST_CORE_EN | RTSX_NON_STICKY_RST_N_DBG /* | 0x04 MIMMIC LINUX */);
+	RTSX_WRITE(sc, 0xFD53, 0x21); // MS_DRIVE_8mA|GPIO_DRIVE_8mA
+#else
 	RTSX_CLR(sc, RTSX_CHANGE_LINK_STATE,
 	    RTSX_FORCE_RST_CORE_EN | RTSX_NON_STICKY_RST_N_DBG | 0x04);
 	RTSX_WRITE(sc, RTSX_SD30_DRIVE_SEL, RTSX_SD30_DRIVE_SEL_3V3);
+#endif
 
 	/* Enable SSC clock. */
 	RTSX_WRITE(sc, RTSX_SSC_CTL1, RTSX_SSC_8X_EN | RTSX_SSC_SEL_4M);
 	RTSX_WRITE(sc, RTSX_SSC_CTL2, 0x12);
 
+#if RTSX_MIMIC_LINUX
+	UTL_CHK_SUCCESS(rtsx_write(sc, RTSX_CHANGE_LINK_STATE, 0x16, 0x10));
+#else
 	RTSX_SET(sc, RTSX_CHANGE_LINK_STATE, RTSX_MAC_PHY_RST_N_DBG);
+#endif
 	RTSX_SET(sc, RTSX_IRQSTAT0, RTSX_LINK_READY_INT);
 
 	RTSX_WRITE(sc, RTSX_PERST_GLITCH_WIDTH, 0x80);
@@ -1020,6 +1031,7 @@ rtsx_hostcmd_send(struct rtsx_softc *sc, int ncmd)
 
 	/* Tell the chip where the command buffer is and run the commands. */
 	WRITE4(sc, RTSX_HCBAR, sc->dmap_cmd->dm_segs[0].ds_addr);
+	UTL_DEBUG_DEF("Run the commands!");
 	WRITE4(sc, RTSX_HCBCTLR,
 	    ((ncmd * 4) & 0x00ffffff) | RTSX_START_CMD | RTSX_HW_AUTO_RSP);
 
