@@ -256,6 +256,39 @@ destroy_cmd:
 	return 1;
 }
 
+#if RTSX_MIMIC_LINUX
+static void rtsx_base_fetch_vendor_settings(struct rtsx_softc *pcr)
+{
+	int rtsx_read_cfg(struct rtsx_softc *sc, u_int8_t func, u_int16_t addr, u_int32_t *val);
+	uint32_t reg;
+
+	rtsx_read_cfg(pcr, 0, 0x724 /* PCR_SETTING_REG1 */, &reg);
+	UTL_LOG("Cfg 0x%x: 0x%x\n", 0x724, reg);
+
+	if (reg & 0x1000000) {
+		UTL_LOG("skip fetch vendor setting\n");
+		return;
+	}
+
+	UTL_LOG("ASPM_EN: %d, sd30_drive_sel_1v8: %d, card_drive_sel: %d",
+		(reg >> 28) & 0x03,
+		(reg >> 26) & 0x03,
+		((reg >> 25) & 0x01) << 6);
+//	pcr->sd30_drive_sel_1v8 = rtsx_reg_to_sd30_drive_sel_1v8(reg);
+//	pcr->card_drive_sel &= 0x3F;
+//	pcr->card_drive_sel |= rtsx_reg_to_card_drive_sel(reg);
+
+	rtsx_read_cfg(pcr, 0, 0x814 /* PCR_SETTING_REG2 */, &reg);
+	UTL_LOG("Cfg 0x%x: 0x%x\n", 0x814, reg);
+	UTL_LOG("sd30_drive_sel_3v3: %d, reverse_socket: %d",
+		(reg >> 5) & 0x03,
+		reg & 0x4000);
+//	pcr->sd30_drive_sel_3v3 = rtsx_reg_to_sd30_drive_sel_3v3(reg);
+//	if (rtsx_reg_check_reverse_socket(reg))
+//		pcr->flags |= PCR_REVERSE_SOCKET;
+}
+#endif
+
 // cholonam: See linux function rtsx_pci_init_hw
 int
 rtsx_init(struct rtsx_softc *sc, int attaching)
@@ -280,6 +313,14 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 			return (1);
 		}
 	}
+#if RTSX_MIMIC_LINUX
+	else if (sc->flags & RTSX_F_525A) {
+		RTSX_READ(sc, RTSX_DUMMY_REG, &version);
+		UTL_DEBUG_DEF("Chip version: %c", 'A' + (version & 0x0F));
+		if ((version & 0x0F) == RTSX_IC_VERSION_A)
+			sc->flags |= RTSX_F_525A_TYPE_A;
+	}
+#endif
 
 	/* Enable interrupt write-clear (default is read-clear). */
 	RTSX_CLR(sc, RTSX_NFTS_TX_CTRL, RTSX_INT_READ_CLR);
@@ -303,6 +344,20 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 	/* XXX magic numbers from linux driver */
 	if (sc->flags & RTSX_F_5209)
 		error = rtsx_write_phy(sc, 0x00, 0xB966);
+#if RTSX_MIMIC_LINUX
+	else if (sc->flags & RTSX_F_525A) {
+		// optimize_phy
+		RTSX_CLR(sc, 0xff7e, 0x10);
+		error = rtsx_write_phy(sc, 0x1d, 0x99ff); // _PHY_FLD0
+		if (error) return error;
+		error = rtsx_write_phy(sc, 0x03, 0x2748); // _PHY_ANA03
+		if (error) return error;
+		if (sc->flags & RTSX_F_525A_TYPE_A) {
+			error = rtsx_write_phy(sc, 0x19, 0x3902);
+			if (error) return error;
+		}
+	}
+#endif
 	else
 		error = rtsx_write_phy(sc, 0x00, 0xBA42);
 	if (error) {
@@ -323,6 +378,11 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 	RTSX_CLR(sc, RTSX_CHANGE_LINK_STATE,
 	    RTSX_FORCE_RST_CORE_EN | RTSX_NON_STICKY_RST_N_DBG /* | 0x04 MIMMIC LINUX */);
 	RTSX_WRITE(sc, 0xFD53, 0x21); // MS_DRIVE_8mA|GPIO_DRIVE_8mA
+
+#if DEBUG
+	// only for debugging purposes
+	rtsx_base_fetch_vendor_settings(sc);
+#endif
 #else
 	RTSX_CLR(sc, RTSX_CHANGE_LINK_STATE,
 	    RTSX_FORCE_RST_CORE_EN | RTSX_NON_STICKY_RST_N_DBG | 0x04);
@@ -345,8 +405,13 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 	/* Set RC oscillator to 400K. */
 	RTSX_CLR(sc, RTSX_RCCTL, RTSX_RCCTL_F_2M);
 
+	// cholonam: In linux this is done in rts5249_extra_init_hw
 	/* Request clock by driving CLKREQ pin to zero. */
+#if RTSX_MIMIC_LINUX
+	RTSX_SET(sc, 0xff03 /* RTSX_PETXCFG (wrong value!) */, RTSX_PETXCFG_CLKREQ_PIN);
+#else
 	RTSX_SET(sc, RTSX_PETXCFG, RTSX_PETXCFG_CLKREQ_PIN);
+#endif
 
 	/* Set up LED GPIO. */
 	if (sc->flags & RTSX_F_5209) {
@@ -360,6 +425,51 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 		/* Set default OLT blink period. */
 		RTSX_SET(sc, RTSX_OLT_LED_CTL, RTSX_OLT_LED_PERIOD);
 	}
+	
+#if RTSX_MIMIC_LINUX
+	// extra_init_hw
+
+	/* Rest L1SUB Config */
+	RTSX_WRITE(sc, 0xfe8f, 0x00); // L1SUB_CONFIG3
+	/* Configure GPIO as output */
+	UTL_CHK_SUCCESS(rtsx_write(sc, RTSX_GPIO_CTL, 0x02, 0x02)); // GPIO_CTL
+	/* Reset ASPM state to default value */
+	UTL_CHK_SUCCESS(rtsx_write(sc, 0xfe57, 0x3F, 0)); // ASPM_FORCE_CTL
+	/* Switch LDO3318 source from DV33 to card_3v3 */
+	UTL_CHK_SUCCESS(rtsx_write(sc, RTSX_LDO_PWR_SEL, 0x03, 0x00));
+	UTL_CHK_SUCCESS(rtsx_write(sc, RTSX_LDO_PWR_SEL, 0x03, 0x01));
+	/* LED shine disabled, set initial shine cycle period */
+	UTL_CHK_SUCCESS(rtsx_write(sc, RTSX_OLT_LED_CTL, 0x0F, 0x02));
+	
+	// configure driving (for me, drive_sel = 3)
+	RTSX_WRITE(sc, 0xfd5a, 0x96); // SD30_CLK_DRIVE_SEL
+	RTSX_WRITE(sc, 0xfd5e, 0x96); // SD30_CMD_DRIVE_SEL
+	RTSX_WRITE(sc, 0xfd5f, 0x96); // SD30_DAT_DRIVE_SEL
+	
+	{
+		int rtsx_read_cfg(struct rtsx_softc *sc, u_int8_t func, u_int16_t addr, u_int32_t *val);
+		u_int32_t val;
+		if (rtsx_read_cfg(sc, 0, 0x814, &val) == 0) {
+			if (val & 0x4000) {
+				sc->flags |= RTSX_F_REVERSE_SOCKET;
+			}
+		}
+		sc->flags |= RTSX_F_FORCE_CLKREQ_0; // TODO: check this...
+	}
+	
+	if (sc->flags & RTSX_F_REVERSE_SOCKET) {
+		UTL_LOG("Reverse socket found");
+		UTL_CHK_SUCCESS(rtsx_write(sc, 0xff03 /* RTSX_PETXCFG (wrong value!) */, 0xb0, 0xb0));
+	} else {
+		UTL_CHK_SUCCESS(rtsx_write(sc, 0xff03 /* RTSX_PETXCFG (wrong value!) */, 0xb0, 0x80));
+	}
+	if (sc->flags & RTSX_F_FORCE_CLKREQ_0) {
+		UTL_LOG("FORCE_CLKREQ_0 found");
+		UTL_CHK_SUCCESS(rtsx_write(sc, 0xff03 /* RTSX_PETXCFG (wrong value!) */, 0x80, 0x80));
+	} else {
+		UTL_CHK_SUCCESS(rtsx_write(sc, 0xff03 /* RTSX_PETXCFG (wrong value!) */, 0x80, 0x00));
+	}
+#endif
 
 	return (0);
 }

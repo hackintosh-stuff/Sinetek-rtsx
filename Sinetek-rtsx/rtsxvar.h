@@ -53,11 +53,15 @@ int	rtsx_activate(struct device *, int);
 int	rtsx_intr(void *);
 
 /* flag values */
-#define	RTSX_F_CARD_PRESENT	0x01
-#define	RTSX_F_SDIO_SUPPORT	0x02
-#define	RTSX_F_5209		0x04
-#define	RTSX_F_5229		0x08
-#define	RTSX_F_5229_TYPE_C	0x10
-#define	RTSX_F_525A		0x20
+#define	RTSX_F_CARD_PRESENT	0x0001
+#define	RTSX_F_SDIO_SUPPORT	0x0002
+#define	RTSX_F_5209		0x0004
+#define	RTSX_F_5229		0x0008
+#define	RTSX_F_5229_TYPE_C	0x0010
+#define	RTSX_F_525A		0x0020
+
+#define	RTSX_F_525A_TYPE_A	0x0040
+#define RTSX_F_REVERSE_SOCKET	0x0080
+#define RTSX_F_FORCE_CLKREQ_0	0x1000
 
 #endif
