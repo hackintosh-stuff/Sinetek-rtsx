@@ -38,6 +38,9 @@
 #if DEBUG
 #ifndef UTL_DEBUG_LEVEL
 #	define UTL_DEBUG_LEVEL 0x01 // only default messages
+#else
+#	undef UTL_DEBUG_LEVEL
+#	define UTL_DEBUG_LEVEL (0x03|UTL_DEBUG_LVL_INT) // only cmd and default messages
 #endif
 
 #define UTL_DEBUG(lvl, fmt, ...) \
@@ -138,7 +141,7 @@ static inline AbsoluteTime timo2AbsoluteTimeDeadline(int timo) {
 /// Only valid between prepare() and complete()
 static inline size_t bufferNSegments(IOMemoryDescriptor *md) {
 	size_t ret = 0;
-	#if DEBUG
+#if DEBUG
 	uint64_t len = md->getLength();
 
 	uint64_t thisOffset = 0;

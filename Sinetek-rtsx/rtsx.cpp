@@ -889,6 +889,7 @@ rtsx_read(struct rtsx_softc *sc, u_int16_t addr, u_int8_t *val)
 	}
 
 	*val = (reg & 0xff);
+	UTL_DEBUG_CMD("RTSX_READ:  addr: 0x%04x val: 0x%02x (tries: %d)", addr, *val, 1024 - tries);
 	if (!tries) UTL_ERR("Returning ETIMEDOUT (addr=0x%04x)!", addr);
 	return (tries == 0) ? ETIMEDOUT : 0;
 }
@@ -907,12 +908,16 @@ rtsx_write(struct rtsx_softc *sc, u_int16_t addr, u_int8_t mask, u_int8_t val)
 	while (tries--) {
 		reg = READ4(sc, RTSX_HAIMR);
 		if (!(reg & RTSX_HAIMR_BUSY)) {
-			if (val != (reg & 0xff))
+			if (val != (reg & 0xff)) {
+				UTL_ERR("Returning EIO (addr=0x%04x mask=0x%02x val=0x%02x)!", addr, mask, val);
 				return EIO;
+			}
+			UTL_DEBUG_CMD("RTSX_WRITE: addr: 0x%04x val: 0x%02x (tries: %d)", addr, val, 1024 - tries);
 			return 0;
 		}
 	}
 
+	UTL_DEBUG_CMD("RTSX_WRITE: addr: 0x%04x val: 0x%02x (tries: %d)", addr, val, 1024 - tries);
 	UTL_ERR("Returning ETIMEDOUT (addr=0x%04x mask=0x%02x val=0x%02x)!", addr, mask, val);
 	return ETIMEDOUT;
 }
