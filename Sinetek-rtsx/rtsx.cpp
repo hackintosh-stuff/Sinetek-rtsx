@@ -407,11 +407,7 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 
 	// cholonam: In linux this is done in rts5249_extra_init_hw
 	/* Request clock by driving CLKREQ pin to zero. */
-#if RTSX_MIMIC_LINUX
-	RTSX_SET(sc, 0xff03 /* RTSX_PETXCFG (wrong value!) */, RTSX_PETXCFG_CLKREQ_PIN);
-#else
 	RTSX_SET(sc, RTSX_PETXCFG, RTSX_PETXCFG_CLKREQ_PIN);
-#endif
 
 	/* Set up LED GPIO. */
 	if (sc->flags & RTSX_F_5209) {
@@ -459,15 +455,15 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 	
 	if (sc->flags & RTSX_F_REVERSE_SOCKET) {
 		UTL_LOG("Reverse socket found");
-		UTL_CHK_SUCCESS(rtsx_write(sc, 0xff03 /* RTSX_PETXCFG (wrong value!) */, 0xb0, 0xb0));
+		UTL_CHK_SUCCESS(rtsx_write(sc, RTSX_PETXCFG, 0xb0, 0xb0));
 	} else {
-		UTL_CHK_SUCCESS(rtsx_write(sc, 0xff03 /* RTSX_PETXCFG (wrong value!) */, 0xb0, 0x80));
+		UTL_CHK_SUCCESS(rtsx_write(sc, RTSX_PETXCFG, 0xb0, 0x80));
 	}
 	if (sc->flags & RTSX_F_FORCE_CLKREQ_0) {
 		UTL_LOG("FORCE_CLKREQ_0 found");
-		UTL_CHK_SUCCESS(rtsx_write(sc, 0xff03 /* RTSX_PETXCFG (wrong value!) */, 0x80, 0x80));
+		UTL_CHK_SUCCESS(rtsx_write(sc, RTSX_PETXCFG, 0x80, 0x80));
 	} else {
-		UTL_CHK_SUCCESS(rtsx_write(sc, 0xff03 /* RTSX_PETXCFG (wrong value!) */, 0x80, 0x00));
+		UTL_CHK_SUCCESS(rtsx_write(sc, RTSX_PETXCFG, 0x80, 0x00));
 	}
 #endif
 
