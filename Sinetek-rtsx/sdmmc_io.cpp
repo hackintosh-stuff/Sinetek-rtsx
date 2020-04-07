@@ -392,6 +392,7 @@ sdmmc_io_rw_direct(struct sdmmc_softc *sc, struct sdmmc_function *sf,
 	/* Make sure the card is selected. */
 	if ((error = sdmmc_select_card(sc, sf)) != 0) {
 		rw_exit(&sc->sc_lock);
+		UTL_ERR("Failed to select card while reading reg %d of function %d (error %d)", reg, sf ? sf->number : 0, error);
 		return error;
 	}
 
@@ -410,6 +411,7 @@ sdmmc_io_rw_direct(struct sdmmc_softc *sc, struct sdmmc_function *sf,
 	error = sdmmc_mmc_command(sc, &cmd);
 	*datap = SD_R5_DATA(cmd.c_resp);
 
+	if (error) UTL_ERR("Failed to read reg %d of function %d (error %d)", reg, sf ? sf->number : 0, error);
 	return error;
 }
 
