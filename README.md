@@ -22,9 +22,12 @@ Used by `#define`/`#if <option>`:
 | `RTSX_USE_IOLOCK`        |                   | This should use more locks to protect critical sections.                                                                    |
 | `RTSX_USE_IOCOMMANDGATE` | `RTSX_USE_IOLOCK` | A try to make `IOCommandGate` working, but never really worked.                                                             |
 | `RTSX_USE_IOMALLOC`      |                   | Use `IOMalloc`/`IOFree` for memory management instead of new/delete.                                                        |
+| `RTSX_MIMIC_LINUX`       |                   | Mimic what Linux does when ininitializing the hardware.                                                                     |
 
 ## To Do
 
  - Multi-block read?
  - Use command gate instead of two workloops? Is it even possible?
  - Once a disk is mounted, the kext cannot be unloaded (check why).
+ - Prevent namespace pollution (BSD functions pollute the namespace and may cause collisions)
+ - Improve compat_spl (use IORecursiveLock?) so that tsleep_nsec() can be called after splbio()

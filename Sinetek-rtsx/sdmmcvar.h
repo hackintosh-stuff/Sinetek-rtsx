@@ -70,10 +70,10 @@ struct sdmmc_task {
 };
 
 #define	sdmmc_init_task(xtask, xfunc, xarg) do {			\
-(xtask)->func = (xfunc);					\
-(xtask)->arg = (xarg);						\
-(xtask)->onqueue = 0;						\
-(xtask)->sc = NULL;						\
+	(xtask)->func = (xfunc);					\
+	(xtask)->arg = (xarg);						\
+	(xtask)->onqueue = 0;						\
+	(xtask)->sc = NULL;						\
 } while (0)
 
 #define sdmmc_task_pending(xtask) ((xtask)->onqueue)
@@ -100,7 +100,7 @@ struct sdmmc_command {
 #define SCF_RSP_CRC	 0x0400
 #define SCF_RSP_IDX	 0x0800
 #define SCF_RSP_PRESENT	 0x1000
-	/* response types */
+/* response types */
 #define SCF_RSP_R0	 0 /* none */
 #define SCF_RSP_R1	 (SCF_RSP_PRESENT|SCF_RSP_CRC|SCF_RSP_IDX)
 #define SCF_RSP_R1B	 (SCF_RSP_PRESENT|SCF_RSP_CRC|SCF_RSP_IDX|SCF_RSP_BSY)
@@ -112,7 +112,7 @@ struct sdmmc_command {
 #define SCF_RSP_R6	 (SCF_RSP_PRESENT|SCF_RSP_CRC|SCF_RSP_IDX)
 #define SCF_RSP_R7	 (SCF_RSP_PRESENT|SCF_RSP_CRC|SCF_RSP_IDX)
 	int		 c_error;	/* errno value on completion */
-	
+
 	/* Host controller owned fields for data xfer in progress */
 	int c_resid;			/* remaining I/O */
 	u_char *c_buf;			/* remaining data */
@@ -132,7 +132,7 @@ struct sdmmc_cis {
 	u_char		 cis1_major;
 	u_char		 cis1_minor;
 	char		 cis1_info_buf[256];
-	const char	*cis1_info[4];
+	char		*cis1_info[4];
 };
 
 /*
@@ -191,7 +191,7 @@ int	sdmmc_app_command(struct sdmmc_softc *, struct sdmmc_command *);
 void	sdmmc_go_idle_state(struct sdmmc_softc *);
 int	sdmmc_select_card(struct sdmmc_softc *, struct sdmmc_function *);
 int	sdmmc_set_relative_addr(struct sdmmc_softc *,
-				struct sdmmc_function *);
+	    struct sdmmc_function *);
 int	sdmmc_send_if_cond(struct sdmmc_softc *, uint32_t);
 
 //void	sdmmc_intr_enable(struct sdmmc_function *);

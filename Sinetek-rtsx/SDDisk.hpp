@@ -6,9 +6,9 @@
 class SDDisk : public IOBlockStorageDevice
 {
 	OSDeclareDefaultStructors(SDDisk)
-	
+
 	friend void read_task_impl_(void *arg);
-	
+
 private:
 	rtsx_softc *		provider_;
 	IOLock *			util_lock_;
@@ -21,11 +21,11 @@ public:
 	
 	virtual bool		attach(IOService* provider) override;
 	virtual void		detach(IOService* provider) override;
-	
+
 	/**
 	 * Subclassing requirements.
 	 */
-	
+
 	virtual IOReturn	doEjectMedia(void) override;
 	virtual IOReturn	doFormatMedia(UInt64 byteCapacity) override;
 	virtual UInt32		GetBlockCount(void) const;
@@ -46,6 +46,12 @@ public:
 	virtual IOReturn	reportWriteProtection(bool *isWriteProtected) override;
 	virtual IOReturn	getWriteCacheState(bool *enabled) override;
 	virtual IOReturn	setWriteCacheState(bool enabled) override;
-	virtual IOReturn	doAsyncReadWrite(IOMemoryDescriptor *buffer, UInt64 block, UInt64 nblks, IOStorageAttributes *attributes, IOStorageCompletion *completion) override;
-	
+	virtual IOReturn	doAsyncReadWrite(IOMemoryDescriptor *buffer, UInt64 block, UInt64 nblks,
+						 IOStorageAttributes *attributes,
+						 IOStorageCompletion *completion) override;
+
+#if 0
+	virtual void taggedRetain(const void * tag) const override;
+	virtual void taggedRelease(const void * tag, const int when) const override;
+#endif
 };

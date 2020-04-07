@@ -11,7 +11,7 @@ __END_DECLS
 
 #include <IOKit/IOTimerEventSource.h>
 
-// other headers from OpenBSD
+// other headers from OpenBSD (they have to be at the end since they use types defined here
 #include "sdmmc_ioreg.h"
 #include "sdmmcdevs.h"
 #include "sdmmcvar.h"
@@ -43,5 +43,11 @@ inline int UTLsplsdmmc(IORecursiveLock *l) {
 #endif
 
 extern int hz;
+
+// shut-up warnings
+#pragma clang diagnostic ignored "-Wconditional-uninitialized"
+#pragma clang diagnostic ignored "-Wshorten-64-to-32"
+#pragma clang diagnostic ignored "-Wunused-variable"
+#pragma clang diagnostic ignored "-Wwritable-strings"
 
 #endif // SINETEK_RTSX_OPENBSD_OPENBSD_COMPAT_H

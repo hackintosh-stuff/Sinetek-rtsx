@@ -8,8 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		9E11DE591E4CB19C00AF36C8 /* SDDisk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9E11DE571E4CB19C00AF36C8 /* SDDisk.cpp */; };
-		9E11DE5A1E4CB19C00AF36C8 /* SDDisk.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 9E11DE581E4CB19C00AF36C8 /* SDDisk.hpp */; };
-		9E9EEDAC1E4C65AD00E640DB /* Sinetek_rtsx.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 9E9EEDAB1E4C65AD00E640DB /* Sinetek_rtsx.hpp */; };
 		9E9EEDAE1E4C65AD00E640DB /* Sinetek_rtsx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9E9EEDAD1E4C65AD00E640DB /* Sinetek_rtsx.cpp */; };
 		9E9EEDB81E4C6EC100E640DB /* rtsx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9E9EEDB71E4C6EC100E640DB /* rtsx.cpp */; };
 		9E9EEDBE1E4C869F00E640DB /* sdmmc_cis.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9E9EEDBD1E4C869F00E640DB /* sdmmc_cis.cpp */; };
@@ -86,25 +84,25 @@
 			isa = PBXGroup;
 			children = (
 				93576F8424263CC8006F1A33 /* openbsd */,
+				9E9EEDAF1E4C65AD00E640DB /* Info.plist */,
 				9E11DE571E4CB19C00AF36C8 /* SDDisk.cpp */,
 				9E11DE581E4CB19C00AF36C8 /* SDDisk.hpp */,
-				9E9EEDAB1E4C65AD00E640DB /* Sinetek_rtsx.hpp */,
 				9E9EEDAD1E4C65AD00E640DB /* Sinetek_rtsx.cpp */,
+				9E9EEDAB1E4C65AD00E640DB /* Sinetek_rtsx.hpp */,
+				935884C92421D21500E781A7 /* util.h */,
+				E811EB2A202D93B900049454 /* device.h */,
 				9E9EEDB71E4C6EC100E640DB /* rtsx.cpp */,
 				9E9EEDB51E4C6CAB00E640DB /* rtsxreg.h */,
 				9E9EEDB61E4C6D2400E640DB /* rtsxvar.h */,
-				9E9EEDC01E4C89FA00E640DB /* sdmmc_io.cpp */,
 				9E9EEDBD1E4C869F00E640DB /* sdmmc_cis.cpp */,
+				9E9EEDC01E4C89FA00E640DB /* sdmmc_io.cpp */,
+				9E9EEDB91E4C723000E640DB /* sdmmc_ioreg.h */,
 				9E9EEDC21E4C927D00E640DB /* sdmmc_mem.cpp */,
 				9E9EEDC41E4C98AC00E640DB /* sdmmc.cpp */,
-				9E9EEDB91E4C723000E640DB /* sdmmc_ioreg.h */,
 				9E9EEDBA1E4C72D500E640DB /* sdmmcchip.h */,
-				9E9EEDBB1E4C730D00E640DB /* sdmmcvar.h */,
-				9E9EEDBC1E4C73D200E640DB /* sdmmcreg.h */,
 				9E9EEDBF1E4C86C800E640DB /* sdmmcdevs.h */,
-				9E9EEDAF1E4C65AD00E640DB /* Info.plist */,
-				E811EB2A202D93B900049454 /* device.h */,
-				935884C92421D21500E781A7 /* util.h */,
+				9E9EEDBC1E4C73D200E640DB /* sdmmcreg.h */,
+				9E9EEDBB1E4C730D00E640DB /* sdmmcvar.h */,
 			);
 			path = "Sinetek-rtsx";
 			sourceTree = "<group>";
@@ -116,8 +114,6 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9E11DE5A1E4CB19C00AF36C8 /* SDDisk.hpp in Headers */,
-				9E9EEDAC1E4C65AD00E640DB /* Sinetek_rtsx.hpp in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -251,6 +247,9 @@
 					RTSX_USE_IOFIES,
 					RTSX_USE_IOLOCK,
 					RTSX_USE_WRITEBYTES,
+					"UTL_LOG_DELAY_MS=0",
+					OPENBSD_CODE_DEBUG,
+					"UTL_DEBUG_LEVEL=0xff",
 					RTSX_MIMIC_LINUX,
 				);
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -309,6 +308,7 @@
 					RTSX_USE_IOFIES,
 					RTSX_USE_IOLOCK,
 					RTSX_USE_WRITEBYTES,
+					RTSX_MIMIC_LINUX,
 				);
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;

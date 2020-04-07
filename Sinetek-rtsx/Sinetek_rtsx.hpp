@@ -33,19 +33,19 @@ public:
 	
 	virtual bool start(IOService * provider) override;
 	virtual void stop(IOService * provider) override;
-	
+
 	void rtsx_pci_attach();
 	void rtsx_pci_detach();
 	/* syscl - Power Management Support */
 	virtual IOReturn setPowerState(unsigned long powerStateOrdinal, IOService * policyMaker) override;
-	
+
 	void blk_attach();
 	void blk_detach();
-	
+
 #if RTSX_USE_IOFIES
 	static bool is_my_interrupt(OSObject *arg, IOFilterInterruptEventSource *source);
 #endif // RTSX_USE_IOFIES
-	
+
 	// ** //
 	IOPCIDevice *		provider_;
 	IOWorkLoop *		workloop_;
@@ -63,7 +63,7 @@ public:
 #else // RTSX_USE_IOFIES
 	IOInterruptEventSource *intr_source_;
 #endif // RTSX_USE_IOFIES
-	
+
 	SDDisk *			sddisk_;
 #if !RTSX_FIX_TASK_BUG
 	// This is not needed, since we will dynamically allocate read tasks

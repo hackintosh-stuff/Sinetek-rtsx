@@ -153,22 +153,22 @@
 #define MMC_CSD_READ_BL_LEN(resp)	MMC_RSP_BITS((resp), 80, 4)
 #define MMC_CSD_C_SIZE(resp)		MMC_RSP_BITS((resp), 62, 12)
 #define MMC_CSD_CAPACITY(resp)		((MMC_CSD_C_SIZE((resp))+1) << \
-(MMC_CSD_C_SIZE_MULT((resp))+2))
+					 (MMC_CSD_C_SIZE_MULT((resp))+2))
 #define MMC_CSD_C_SIZE_MULT(resp)	MMC_RSP_BITS((resp), 47, 3)
 
 /* MMC v1 R2 response (CID) */
 #define MMC_CID_MID_V1(resp)		MMC_RSP_BITS((resp), 104, 24)
 #define MMC_CID_PNM_V1_CPY(resp, pnm)					\
-do {								\
-(pnm)[0] = MMC_RSP_BITS((resp), 96, 8);			\
-(pnm)[1] = MMC_RSP_BITS((resp), 88, 8);			\
-(pnm)[2] = MMC_RSP_BITS((resp), 80, 8);			\
-(pnm)[3] = MMC_RSP_BITS((resp), 72, 8);			\
-(pnm)[4] = MMC_RSP_BITS((resp), 64, 8);			\
-(pnm)[5] = MMC_RSP_BITS((resp), 56, 8);			\
-(pnm)[6] = MMC_RSP_BITS((resp), 48, 8);			\
-(pnm)[7] = '\0';					\
-} while (0)
+	do {								\
+		(pnm)[0] = MMC_RSP_BITS((resp), 96, 8);			\
+		(pnm)[1] = MMC_RSP_BITS((resp), 88, 8);			\
+		(pnm)[2] = MMC_RSP_BITS((resp), 80, 8);			\
+		(pnm)[3] = MMC_RSP_BITS((resp), 72, 8);			\
+		(pnm)[4] = MMC_RSP_BITS((resp), 64, 8);			\
+		(pnm)[5] = MMC_RSP_BITS((resp), 56, 8);			\
+		(pnm)[6] = MMC_RSP_BITS((resp), 48, 8);			\
+		(pnm)[7] = '\0';					\
+	} while (0)
 #define MMC_CID_REV_V1(resp)		MMC_RSP_BITS((resp), 40, 8)
 #define MMC_CID_PSN_V1(resp)		MMC_RSP_BITS((resp), 16, 24)
 #define MMC_CID_MDT_V1(resp)		MMC_RSP_BITS((resp), 8, 8)
@@ -177,15 +177,15 @@ do {								\
 #define MMC_CID_MID_V2(resp)		MMC_RSP_BITS((resp), 120, 8)
 #define MMC_CID_OID_V2(resp)		MMC_RSP_BITS((resp), 104, 16)
 #define MMC_CID_PNM_V2_CPY(resp, pnm)					\
-do {								\
-(pnm)[0] = MMC_RSP_BITS((resp), 96, 8);			\
-(pnm)[1] = MMC_RSP_BITS((resp), 88, 8);			\
-(pnm)[2] = MMC_RSP_BITS((resp), 80, 8);			\
-(pnm)[3] = MMC_RSP_BITS((resp), 72, 8);			\
-(pnm)[4] = MMC_RSP_BITS((resp), 64, 8);			\
-(pnm)[5] = MMC_RSP_BITS((resp), 56, 8);			\
-(pnm)[6] = '\0';					\
-} while (0)
+	do {								\
+		(pnm)[0] = MMC_RSP_BITS((resp), 96, 8);			\
+		(pnm)[1] = MMC_RSP_BITS((resp), 88, 8);			\
+		(pnm)[2] = MMC_RSP_BITS((resp), 80, 8);			\
+		(pnm)[3] = MMC_RSP_BITS((resp), 72, 8);			\
+		(pnm)[4] = MMC_RSP_BITS((resp), 64, 8);			\
+		(pnm)[5] = MMC_RSP_BITS((resp), 56, 8);			\
+		(pnm)[6] = '\0';					\
+	} while (0)
 #define MMC_CID_PSN_V2(resp)		MMC_RSP_BITS((resp), 16, 32)
 
 /* SD R2 response (CSD) */
@@ -215,9 +215,9 @@ do {								\
 #define SD_CSD_DSR_IMP(resp)		MMC_RSP_BITS((resp), 76, 1)
 #define SD_CSD_C_SIZE(resp)		MMC_RSP_BITS((resp), 62, 12)
 #define SD_CSD_CAPACITY(resp)		((SD_CSD_C_SIZE((resp))+1) << \
-(SD_CSD_C_SIZE_MULT((resp))+2))
+					 (SD_CSD_C_SIZE_MULT((resp))+2))
 #define SD_CSD_V2_C_SIZE(resp)		MMC_RSP_BITS((resp), 48, 22)
-#define SD_CSD_V2_CAPACITY(resp)	((SD_CSD_V2_C_SIZE((resp))+1) << 10)
+#define SD_CSD_V2_CAPACITY(resp)	((SD_CSD_V2_C_SIZE((resp))+1) << 10) 
 #define SD_CSD_V2_BL_LEN		0x9	/* 512 */
 #define SD_CSD_VDD_R_CURR_MIN(resp)	MMC_RSP_BITS((resp), 59, 3)
 #define SD_CSD_VDD_R_CURR_MAX(resp)	MMC_RSP_BITS((resp), 56, 3)
@@ -245,14 +245,14 @@ do {								\
 #define SD_CID_MID(resp)		MMC_RSP_BITS((resp), 120, 8)
 #define SD_CID_OID(resp)		MMC_RSP_BITS((resp), 104, 16)
 #define SD_CID_PNM_CPY(resp, pnm)					\
-do {								\
-(pnm)[0] = MMC_RSP_BITS((resp), 96, 8);			\
-(pnm)[1] = MMC_RSP_BITS((resp), 88, 8);			\
-(pnm)[2] = MMC_RSP_BITS((resp), 80, 8);			\
-(pnm)[3] = MMC_RSP_BITS((resp), 72, 8);			\
-(pnm)[4] = MMC_RSP_BITS((resp), 64, 8);			\
-(pnm)[5] = '\0';					\
-} while (0)
+	do {								\
+		(pnm)[0] = MMC_RSP_BITS((resp), 96, 8);			\
+		(pnm)[1] = MMC_RSP_BITS((resp), 88, 8);			\
+		(pnm)[2] = MMC_RSP_BITS((resp), 80, 8);			\
+		(pnm)[3] = MMC_RSP_BITS((resp), 72, 8);			\
+		(pnm)[4] = MMC_RSP_BITS((resp), 64, 8);			\
+		(pnm)[5] = '\0';					\
+	} while (0)
 #define SD_CID_REV(resp)		MMC_RSP_BITS((resp), 56, 8)
 #define SD_CID_PSN(resp)		MMC_RSP_BITS((resp), 24, 32)
 #define SD_CID_MDT(resp)		MMC_RSP_BITS((resp), 8, 12)
@@ -282,7 +282,7 @@ do {								\
 
 /* Status of Switch Function */
 #define SFUNC_STATUS_GROUP(status, group) \
-(__bitfield((uint32_t *)(status), 400 + (group - 1) * 16, 16))
+	(__bitfield((uint32_t *)(status), 400 + (group - 1) * 16, 16))
 
 #define SD_ACCESS_MODE_SDR12	0
 #define SD_ACCESS_MODE_SDR25	1
@@ -298,14 +298,14 @@ __bitfield(u_int32_t *src, int start, int len)
 	u_int8_t *sp;
 	u_int32_t dst, mask;
 	int shift, bs, bc;
-	
+
 	if (start < 0 || len < 0 || len > 32)
 		return 0;
-	
+
 	dst = 0;
 	mask = len % 32 ? UINT_MAX >> (32 - (len % 32)) : UINT_MAX;
 	shift = 0;
-	
+
 	while (len > 0) {
 		sp = (u_int8_t *)src + start / 8;
 		bs = start % 8;
@@ -317,7 +317,7 @@ __bitfield(u_int32_t *src, int start, int len)
 		start += bc;
 		len -= bc;
 	}
-	
+
 	dst &= mask;
 	return (int)dst;
 }

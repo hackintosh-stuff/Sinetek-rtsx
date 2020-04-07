@@ -15,7 +15,7 @@
 #endif
 
 #define UTL_ERR(fmt, ...) do { \
-	os_log_error(OS_LOG_DEFAULT, "rtsx: %14s%-22s: " fmt "\n", \
+	os_log_error(OS_LOG_DEFAULT, "rtsx:\t%14s%-22s: " fmt "\n", \
 		UTL_THIS_CLASS, __func__, ##__VA_ARGS__); \
 	if (UTL_LOG_DELAY_MS) IOSleep(UTL_LOG_DELAY_MS); /* Wait for log to appear... */ \
 } while (0)
@@ -96,6 +96,18 @@ static inline const char *mmcCmd2str(uint16_t mmcCmd) {
 }
 #endif // DEBUG || SDMMC_DEBUG
 
+#if DEBUG
+static inline const char *busSpaceReg2str(IOByteCount offset) {
+	return offset == 0x00 ? "HCBAR" :
+	offset == 0x04 ? "HCBCTLR" :
+	offset == 0x08 ? "HDBAR" :
+	offset == 0x0c ? "HDBCTLR" :
+	offset == 0x10 ? "HAIMR" :
+	offset == 0x14 ? "BIPR" :
+	offset == 0x18 ? "BIER" : "?";
+}
+#endif // DEBUG
+
 #define UTL_CHK_PTR(ptr, ret) do { \
 if (!(ptr)) { \
 	UTL_ERR("null pointer (%s) found!!!", #ptr); \
@@ -126,19 +138,24 @@ do { \
 } while (0)
 #endif // RTSX_USE_IOMALLOC
 
+static inline AbsoluteTime nsecs2AbsoluteTimeDeadline(uint64_t nsecs) {
+	AbsoluteTime absInterval, deadline;
+	nanoseconds_to_absolutetime(nsecs, &absInterval);
+	clock_absolutetime_interval_to_deadline(absInterval, &deadline);
+	return deadline;
+}
+
 static inline AbsoluteTime timo2AbsoluteTimeDeadline(int timo) {
 	extern int hz;
 	uint64_t nsDelay = (uint64_t) timo / hz * 1000000000LL;
-	AbsoluteTime absInterval, deadline;
-	nanoseconds_to_absolutetime(nsDelay, &absInterval);
-	clock_absolutetime_interval_to_deadline(absInterval, &deadline);
+	AbsoluteTime deadline = nsecs2AbsoluteTimeDeadline(nsDelay);
 	return deadline;
 }
 
 /// Only valid between prepare() and complete()
 static inline size_t bufferNSegments(IOMemoryDescriptor *md) {
 	size_t ret = 0;
-	#if DEBUG
+#if DEBUG
 	uint64_t len = md->getLength();
 
 	uint64_t thisOffset = 0;

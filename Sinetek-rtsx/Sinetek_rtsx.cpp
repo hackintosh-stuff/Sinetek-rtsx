@@ -45,6 +45,7 @@ static IOPMPowerState ourPowerStates[kPowerStateCount] =
 
 bool rtsx_softc::start(IOService *provider)
 {
+	UTL_DEBUG_FUN("START");
 	if (!super::start(provider))
 		return false;
 
@@ -57,16 +58,16 @@ bool rtsx_softc::start(IOService *provider)
 	provider_ = OSDynamicCast(IOPCIDevice, provider);
 	if (!provider_)
 	{
-		printf("IOPCIDevice cannot be cast.\n");
+		UTL_ERR("IOPCIDevice cannot be cast.");
 		return false;
 	}
-	
+
 	workloop_ = getWorkLoop();
 	/*
 	 * Enable memory response from the card.
 	 */
 	provider_->setMemoryEnable(true);
-	
+
 	prepare_task_loop();
 	rtsx_pci_attach();
 	
@@ -74,7 +75,7 @@ bool rtsx_softc::start(IOService *provider)
 #if DEBUG
 		"debug");
 #else
-	"release");
+		"release");
 #endif
 	return true;
 }
@@ -91,13 +92,14 @@ void rtsx_softc::stop(IOService *provider)
 		UTL_ERR("workloop_ is null");
 	}
 	PMstop();
-	
+
 	super::stop(provider);
 	UTL_LOG("Driver stopped.");
 }
 
-static void trampoline_intr(OSObject *ih, IOInterruptEventSource *, int count)
+static void trampoline_intr(OSObject *ih, IOInterruptEventSource *ies, int count)
 {
+	UTL_DEBUG_INT("Interrupt received (ies=" RTSX_PTR_FMT " count=%d)!", RTSX_PTR_FMT_VAR(ies), count);
 	/* go to isr handler */
 	rtsx_softc * that = OSDynamicCast(rtsx_softc, ih);
 	rtsx_intr(that);
@@ -108,7 +110,9 @@ void rtsx_softc::rtsx_pci_attach()
 	uint device_id;
 	//uint32_t flags;
 	int bar = RTSX_PCI_BAR;
-	
+
+	UTL_DEBUG_FUN("START");
+
 	if ((provider_->extendedConfigRead16(RTSX_CFG_PCI) & RTSX_CFG_ASIC) != 0)
 	{
 		printf("no asic\n");
@@ -215,13 +219,14 @@ IOReturn rtsx_softc::setPowerState(unsigned long powerStateOrdinal, IOService *p
 	}
 
 done:
-	IOLog("%s::setPowerState() <===\n", __func__);
+	UTL_DEBUG_FUN("END");
 
 	return ret;
 }
 
 void rtsx_softc::prepare_task_loop()
 {
+	UTL_CHK_PTR(workloop_,);
 #if RTSX_USE_IOCOMMANDGATE
 	task_command_gate_ = IOCommandGate::commandGate(this, rtsx_softc::executeOneCommandGateAction);
 	workloop_->addEventSource(task_command_gate_);
@@ -270,7 +275,7 @@ extern auto sdmmc_del_task(struct sdmmc_task *task)		-> void;
 void rtsx_softc::task_execute_one_impl_(OSObject *target, IOTimerEventSource *sender)
 {
 	extern void read_task_impl_(void *_args);
-	UTL_DEBUG(1, "  ===> TOOK TASK WORKLOOP...");
+	UTL_DEBUG_DEF("  ===> TOOK TASK WORKLOOP...");
 	if (!target) return;
 	rtsx_softc *sc = (rtsx_softc *)target;
 	struct sdmmc_task *task;
@@ -296,7 +301,7 @@ void rtsx_softc::task_execute_one_impl_(OSObject *target, IOTimerEventSource *se
 #if RTSX_USE_IOLOCK
 	IORecursiveLockUnlock(sc->splsdmmc_rec_lock);
 #endif
-	UTL_DEBUG(1, "  <=== RELEASING TASK WORKLOOP...");
+	UTL_DEBUG_DEF("  <=== RELEASING TASK WORKLOOP...");
 }
 
 /**
@@ -311,34 +316,41 @@ void rtsx_softc::blk_attach()
 	sddisk_ = new SDDisk();
 	sddisk_->init(this);
 	sddisk_->attach(this);
-	UTL_DEBUG(0, "Registering service...");
+	UTL_DEBUG_DEF("Registering service...");
 	sddisk_->registerService(); // this should probably be called by the start() method of sddisk_
 	sddisk_->release();
 }
 
 void rtsx_softc::blk_detach()
 {
-	UTL_DEBUG(0, "START");
+	UTL_DEBUG_FUN("START");
 
 	if (!sddisk_->terminate()) {
-		UTL_DEBUG(0, "sddisk->terminate() returns false!");
+		UTL_DEBUG_DEF("sddisk->terminate() returns false!");
 	}
 	UTL_DEBUG(0, "END");
 }
 
 #if RTSX_USE_IOFIES
+static uint32_t _READ4(rtsx_softc *sc, IOByteCount offset) {
+	uint32_t ret = 0;
+	sc->memory_descriptor_->readBytes(offset, &ret, 4);
+	// we cannot log here
+	return ret;
+}
+
 /// This function runs in interrupt context, meaning that IOLog CANNOT be used (only basic functionality is available).
 bool rtsx_softc::is_my_interrupt(OSObject *arg, IOFilterInterruptEventSource *source) {
 	if (!arg) return false;
 
 	rtsx_softc *sc = (rtsx_softc*) arg;
 
-	auto status = READ4(sc, RTSX_BIPR);
+	auto status = _READ4(sc, RTSX_BIPR);
 	if (!status) {
 		return false;
 	}
 
-	auto bier = READ4(sc, RTSX_BIER);
+	auto bier = _READ4(sc, RTSX_BIER);
 	if ((status & bier) == 0) return false;
 
 	return true;
@@ -359,9 +371,9 @@ IOReturn rtsx_softc::executeOneCommandGateAction(OSObject *obj,
 						 void *,
 						 void *, void *, void * )
 {
-	UTL_DEBUG(0, "EXECUTE ONE COMMANDGATEACTION CALLED!");
+	UTL_DEBUG_DEF("EXECUTE ONE COMMANDGATEACTION CALLED!");
 	rtsx_softc::task_execute_one_impl_(obj, nullptr /* unused */);
 	return kIOReturnSuccess;
-	UTL_DEBUG(0, "EXECUTE ONE COMMANDGATEACTION RETURNING");
+	UTL_DEBUG_DEF("EXECUTE ONE COMMANDGATEACTION RETURNING");
 }
 #endif // RTSX_USE_IOCOMMANDGATE

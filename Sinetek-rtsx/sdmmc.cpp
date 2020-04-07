@@ -49,13 +49,15 @@ int	sdmmc_ioctl(struct device *, u_long, caddr_t);
 #endif
 
 #ifdef SDMMC_DEBUG
-int sdmmcdebug = 0;
+int sdmmcdebug = 1;
 extern int sdhcdebug;	/* XXX should have a sdmmc_chip_debug() function */
 void sdmmc_dump_command(struct sdmmc_softc *, struct sdmmc_command *);
 #define DPRINTF(n,s)	do { printf s; } while (0)
 #else
 #define DPRINTF(n,s)	do {} while (0)
 #endif
+
+#define DEVNAME(x) "sdmmc"
 
 void
 sdmmc_attach(struct sdmmc_softc *sc)
@@ -94,7 +96,7 @@ sdmmc_attach(struct sdmmc_softc *sc)
 	if (bio_register(self, sdmmc_ioctl) != 0)
 		printf("%s: unable to register ioctl\n", DEVNAME(sc));
 #endif
-	
+
 	/*
 	 * Create the event thread that will attach and detach cards
 	 * and perform other lengthy operations.  Enter config_pending
@@ -109,6 +111,7 @@ sdmmc_attach(struct sdmmc_softc *sc)
 int
 sdmmc_detach(struct device *self, int flags)
 {
+	UTL_DEBUG_FUN("START");
 	struct sdmmc_softc *sc = (struct sdmmc_softc *)self;
 	
 	(void)sc;
@@ -198,12 +201,9 @@ sdmmc_detach(struct device *self, int flags)
 void
 sdmmc_add_task(struct sdmmc_softc *sc, struct sdmmc_task *task)
 {
-	UTL_DEBUG(1, "START");
 	int s;
-	
+
 	s = splsdmmc();
-	// cholonam: a race condition may happen here since an insert may be done by a client request, while a task is
-	//           being retrieved by the timer! -> we need to protect sc->sc_tskq
 	TAILQ_INSERT_TAIL(&sc->sc_tskq, task, next);
 	task->onqueue = 1;
 	task->sc = sc;
@@ -226,10 +226,10 @@ sdmmc_del_task(struct sdmmc_task *task)
     UTL_CHK_PTR(task->sc,);
 	struct sdmmc_softc *sc = task->sc;
 	int s;
-	
+
 	if (sc == NULL)
 		return;
-	
+
 	s = splsdmmc();
 	task->sc = NULL;
 	task->onqueue = 0;
@@ -237,11 +237,9 @@ sdmmc_del_task(struct sdmmc_task *task)
 	splx(s);
 }
 
-// cholonam: This is called alled from card_insert/card_eject
 void
 sdmmc_needs_discover(struct device *self)
 {
-	UTL_DEBUG(0, "START");
 	struct sdmmc_softc *sc = (struct sdmmc_softc *)self;
 	
 	UTL_DEBUG(0, "Task pending (on queue): %d", sdmmc_task_pending(&sc->sc_discover_task));
@@ -271,7 +269,7 @@ sdmmc_discover_task(void *arg)
 			sdmmc_card_detach(sc, DETACH_FORCE);
 		}
 	}
-	
+
 	if (ISSET(sc->sc_flags, SMF_CONFIG_PENDING)) {
 		UTL_DEBUG(1, "3...");
 		CLR(sc->sc_flags, SMF_CONFIG_PENDING);
@@ -288,9 +286,9 @@ void
 sdmmc_card_attach(struct sdmmc_softc *sc)
 {
 	DPRINTF(1,("%s: attach card\n", DEVNAME(sc)));
-	
+
 	CLR(sc->sc_flags, SMF_CARD_ATTACHED);
-	
+
 	/*
 	 * Power up the card (or card stack).
 	 */
@@ -298,7 +296,7 @@ sdmmc_card_attach(struct sdmmc_softc *sc)
 		printf("%s: can't enable card\n", DEVNAME(sc));
 		goto err;
 	}
-	
+
 	/*
 	 * Scan for I/O functions and memory cards on the bus,
 	 * allocating a sdmmc_function structure for each.
@@ -307,7 +305,7 @@ sdmmc_card_attach(struct sdmmc_softc *sc)
 		printf("%s: no functions\n", DEVNAME(sc));
 		goto err;
 	}
-	
+
 	/*
 	 * Initialize the I/O functions and memory cards.
 	 */
@@ -315,15 +313,15 @@ sdmmc_card_attach(struct sdmmc_softc *sc)
 		printf("%s: init failed\n", DEVNAME(sc));
 		goto err;
 	}
-	
+
 	/* Attach SCSI emulation for memory cards. */
 	if (ISSET(sc->sc_flags, SMF_MEM_MODE))
 		sc->blk_attach();
-	
+
 	/* Attach I/O function drivers. */
 	if (ISSET(sc->sc_flags, SMF_IO_MODE))
 		sdmmc_io_attach(sc);
-	
+
 	SET(sc->sc_flags, SMF_CARD_ATTACHED);
 	return;
 err:
@@ -338,24 +336,24 @@ void
 sdmmc_card_detach(struct sdmmc_softc *sc, int flags)
 {
 	struct sdmmc_function *sf, *sfnext;
-	
+
 	DPRINTF(1,("%s: detach card\n", DEVNAME(sc)));
-	
+
 	if (ISSET(sc->sc_flags, SMF_CARD_ATTACHED)) {
 		/* Detach I/O function drivers. */
 		if (ISSET(sc->sc_flags, SMF_IO_MODE))
 			sdmmc_io_detach(sc);
-		
+
 		/* Detach the SCSI emulation for memory cards. */
 		if (ISSET(sc->sc_flags, SMF_MEM_MODE))
 			sc->blk_detach();
-		
+
 		CLR(sc->sc_flags, SMF_CARD_ATTACHED);
 	}
-	
+
 	/* Power down. */
 	sdmmc_disable(sc);
-	
+
 	/* Free all sdmmc_function structures. */
 	for (sf = STAILQ_FIRST(&sc->sf_head); sf != NULL; sf = sfnext) {
 		sfnext = STAILQ_NEXT(sf, sf_list);
@@ -371,7 +369,7 @@ sdmmc_enable(struct sdmmc_softc *sc)
 {
 	u_int32_t host_ocr;
 	int error;
-	
+
 	/*
 	 * Calculate the equivalent of the card OCR from the host
 	 * capabilities and select the maximum supported bus voltage.
@@ -382,33 +380,33 @@ sdmmc_enable(struct sdmmc_softc *sc)
 		printf("%s: can't supply bus power\n", DEVNAME(sc));
 		goto err;
 	}
-	
+
 	/*
 	 * Select the minimum clock frequency.
 	 */
 	error = rtsx_bus_clock(sc,
-				     SDMMC_SDCLK_400KHZ, SDMMC_TIMING_LEGACY);
+	    SDMMC_SDCLK_400KHZ, SDMMC_TIMING_LEGACY);
 	if (error != 0) {
 		printf("%s: can't supply clock\n", DEVNAME(sc));
 		goto err;
 	}
-	
+
 	/* XXX wait for card to power up */
 	sdmmc_delay(250000);
-	
+
 	/* Initialize SD I/O card function(s). */
 	if ((error = sdmmc_io_enable(sc)) != 0)
 		goto err;
-	
+
 	/* Initialize SD/MMC memory card(s). */
 	if (ISSET(sc->sc_flags, SMF_MEM_MODE) &&
 	    (error = sdmmc_mem_enable(sc)) != 0)
 		goto err;
-	
-err:
+
+ err:
 	if (error != 0)
 		sdmmc_disable(sc);
-	
+
 	return error;
 }
 
@@ -416,10 +414,10 @@ void
 sdmmc_disable(struct sdmmc_softc *sc)
 {
 	/* XXX complete commands if card is still present. */
-	
+
 	/* Make sure no card is still selected. */
 	(void)sdmmc_select_card(sc, NULL);
-	
+
 	/* Turn off bus power and clock. */
 	(void)rtsx_bus_clock(sc,
 				   SDMMC_SDCLK_OFF, SDMMC_TIMING_LEGACY);
@@ -434,7 +432,7 @@ sdmmc_set_bus_power(struct sdmmc_softc *sc, u_int32_t host_ocr,
 		    u_int32_t card_ocr)
 {
 	u_int32_t bit;
-	
+
 	/* Mask off unsupported voltage levels and select the lowest. */
 	DPRINTF(1,("%s: host_ocr=%x ", DEVNAME(sc), host_ocr));
 	host_ocr &= card_ocr;
@@ -444,8 +442,8 @@ sdmmc_set_bus_power(struct sdmmc_softc *sc, u_int32_t host_ocr,
 			break;
 		}
 	}
-	DPRINTF(1,("card_ocr=%x new_ocr=%x\n", card_ocr, host_ocr));
-	
+	UTL_DEBUG_DEF("card_ocr=%x new_ocr=%x\n", card_ocr, host_ocr);
+
 	if (host_ocr == 0 ||
 	    rtsx_bus_power(sc, host_ocr) != 0)
 		return 1;
@@ -484,12 +482,16 @@ sdmmc_scan(struct sdmmc_softc *sc)
 {
 	
 	/* Scan for I/O functions. */
-	if (ISSET(sc->sc_flags, SMF_IO_MODE))
+	if (ISSET(sc->sc_flags, SMF_IO_MODE)) {
+		UTL_DEBUG_CMD("Scanning IO Functions...");
 		sdmmc_io_scan(sc);
+	}
 	
 	/* Scan for memory cards on the bus. */
-	if (ISSET(sc->sc_flags, SMF_MEM_MODE))
+	if (ISSET(sc->sc_flags, SMF_MEM_MODE)) {
+		UTL_DEBUG_CMD("Scanning mem...");
 		sdmmc_mem_scan(sc);
+	}
 	
 	/* There should be at least one function now. */
 	if (STAILQ_EMPTY(&sc->sf_head)) {
@@ -549,17 +551,17 @@ sdmmc_app_command(struct sdmmc_softc *sc, struct sdmmc_command *cmd)
 		acmd.c_arg = sc->sc_card->rca << 16;
 	}
 	acmd.c_flags = SCF_CMD_AC | SCF_RSP_R1;
-	
+
 	error = sdmmc_mmc_command(sc, &acmd);
 	if (error != 0) {
 		return error;
 	}
-	
+
 	if (!ISSET(MMC_R1(acmd.c_resp), MMC_R1_APP_CMD)) {
 		/* Card does not support application commands. */
 		return ENODEV;
 	}
-	
+
 	error = sdmmc_mmc_command(sc, cmd);
 	return error;
 }
@@ -597,7 +599,7 @@ sdmmc_go_idle_state(struct sdmmc_softc *sc)
 	bzero(&cmd, sizeof cmd);
 	cmd.c_opcode = MMC_GO_IDLE_STATE;
 	cmd.c_flags = SCF_CMD_BC | SCF_RSP_R0;
-	
+
 	(void)sdmmc_mmc_command(sc, &cmd);
 }
 
@@ -616,10 +618,10 @@ sdmmc_send_if_cond(struct sdmmc_softc *sc, uint32_t card_ocr)
 	cmd.c_opcode = SD_SEND_IF_COND;
 	cmd.c_arg = ((card_ocr & SD_OCR_VOL_MASK) != 0) << 8 | pat;
 	cmd.c_flags = SCF_CMD_BCR | SCF_RSP_R7;
-	
+
 	if (sdmmc_mmc_command(sc, &cmd) != 0)
 		return 1;
-	
+
 	res = cmd.c_resp[0];
 	if (res != pat)
 		return 1;
@@ -646,10 +648,10 @@ sdmmc_set_relative_addr(struct sdmmc_softc *sc,
 		cmd.c_arg = MMC_ARG_RCA(sf->rca);
 		cmd.c_flags = SCF_CMD_AC | SCF_RSP_R1;
 	}
-	
+
 	if (sdmmc_mmc_command(sc, &cmd) != 0)
 		return 1;
-	
+
 	if (ISSET(sc->sc_flags, SMF_SD_MODE))
 		sf->rca = SD_R6_RCA(cmd.c_resp);
 	return 0;
@@ -666,7 +668,7 @@ sdmmc_select_card(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 		sc->sc_card = sf;
 		return 0;
 	}
-	
+
 	bzero(&cmd, sizeof cmd);
 	cmd.c_opcode = MMC_SELECT_CARD;
 	cmd.c_arg = sf == NULL ? 0 : MMC_ARG_RCA(sf->rca);
@@ -686,13 +688,13 @@ sdmmc_ioctl(struct device *self, u_long request, caddr_t addr)
 	struct sdmmc_command cmd;
 	void *data;
 	int error = 0;
-	
+
 	switch (request) {
 #ifdef SDMMC_DEBUG
-		case SDIOCSETDEBUG:
-			sdmmcdebug = (((struct bio_sdmmc_debug *)addr)->debug) & 0xff;
-			sdhcdebug = (((struct bio_sdmmc_debug *)addr)->debug >> 8) & 0xff;
-			break;
+	case SDIOCSETDEBUG:
+		sdmmcdebug = (((struct bio_sdmmc_debug *)addr)->debug) & 0xff;
+		sdhcdebug = (((struct bio_sdmmc_debug *)addr)->debug >> 8) & 0xff;
+		break;
 #endif
 			
 		case SDIOCEXECMMC:
@@ -764,30 +766,28 @@ sdmmc_dump_command(struct sdmmc_softc *sc, struct sdmmc_command *cmd)
 {
 	int i;
 	
-	DPRINTF(1,("%s: cmd %u arg=%#x data=%p dlen=%d flags=%#x "
-	    "proc=\"%s\" (error %d)\n", DEVNAME(sc), cmd->c_opcode,
-	    cmd->c_arg, cmd->c_data, cmd->c_datalen, cmd->c_flags,
-	    "", cmd->c_error));
-    if (cmd->c_error) {
-        UTL_ERR("%s: cmd %u (%s) arg=%#x data=%p dlen=%d flags=%#x proc=\"%s\" "
-                "(error %d)\n", DEVNAME(sc), cmd->c_opcode, mmcCmd2str(cmd->c_opcode),
-                cmd->c_arg, cmd->c_data, cmd->c_datalen, cmd->c_flags, "", cmd->c_error);
-    } else {
-        UTL_DEBUG(2, "%s: cmd %u (%s) arg=%#x data=%p dlen=%d flags=%#x proc=\"%s\" "
-                  "(error %d)\n", DEVNAME(sc), cmd->c_opcode, mmcCmd2str(cmd->c_opcode),
-                  cmd->c_arg, cmd->c_data, cmd->c_datalen, cmd->c_flags, "", cmd->c_error);
-    }
-	
+	if (cmd->c_error) {
+		UTL_ERR("%s: cmd %u (%s) arg=%#x data=%p dlen=%d flags=%#x proc=\"%s\" "
+			"(error %d)\n", DEVNAME(sc), cmd->c_opcode, mmcCmd2str(cmd->c_opcode),
+			cmd->c_arg, cmd->c_data, cmd->c_datalen, cmd->c_flags, "", cmd->c_error);
+	} else {
+		UTL_DEBUG_CMD("%s: cmd %u (%s) arg=%#x data=%p dlen=%d flags=%#x proc=\"%s\" "
+			      "(error %d)\n", DEVNAME(sc), cmd->c_opcode, mmcCmd2str(cmd->c_opcode),
+			      cmd->c_arg, cmd->c_data, cmd->c_datalen, cmd->c_flags, "", cmd->c_error);
+	}
+
 	if (cmd->c_error || sdmmcdebug < 1)
 		return;
-	
-	printf("%s: resp=", DEVNAME(sc));
+
+	char buf[100] = { 0 }; size_t bi;
+
+	bi = scnprintf(buf, 100, "%s: resp=", DEVNAME(sc));
 	if (ISSET(cmd->c_flags, SCF_RSP_136))
 		for (i = 0; i < sizeof cmd->c_resp; i++)
-			printf("%02x ", ((u_char *)cmd->c_resp)[i]);
+			bi += scnprintf(buf + bi, 100 - bi, "%02x ", ((u_char *)cmd->c_resp)[i]);
 	else if (ISSET(cmd->c_flags, SCF_RSP_PRESENT))
 		for (i = 0; i < 4; i++)
-			printf("%02x ", ((u_char *)cmd->c_resp)[i]);
-	printf("\n");
+			bi += scnprintf(buf + bi, 100 - bi, "%02x ", ((u_char *)cmd->c_resp)[i]);
+	UTL_DEBUG_CMD("%s\n", buf);
 }
 #endif

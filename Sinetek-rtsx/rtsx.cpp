@@ -57,7 +57,7 @@
  */
 
 #define	RTSX_DMA_MAX_SEGSIZE	0x80000
-#define	RTSX_HOSTCMD_MAX		256
+#define	RTSX_HOSTCMD_MAX	256
 #define	RTSX_HOSTCMD_BUFSIZE	(sizeof(u_int32_t) * RTSX_HOSTCMD_MAX)
 #define	RTSX_DMA_DATA_BUFSIZE	MAXPHYS
 
@@ -74,50 +74,57 @@ char * DEVNAME(rtsx_softc *)
  */
 extern int hz;                  /* system clock's frequency */
 
-const static int VERY_VERBOSE_IO = 0;
 uint32_t
 READ4(rtsx_softc *sc, uint32_t reg)
 {
 	uint32_t val;
+	sc->memory_descriptor_->prepare();
 	sc->memory_descriptor_->readBytes(reg, &val, 4);
-	if (VERY_VERBOSE_IO) printf("rd  a:%x v:%x\n", reg, val);
+	sc->memory_descriptor_->complete();
+	if (reg != 0x10)
+		UTL_DEBUG_CMD("BUS SPACE READ:  off 0x%02x => 0x%08x (%s)", (int) reg, (int) val,
+			      busSpaceReg2str(reg));
 	return val;
 }
 
 void
 WRITE4(rtsx_softc *sc, uint32_t reg, uint32_t val)
 {
-	if (VERY_VERBOSE_IO) printf("wr  a:%x v:%x\n", reg, val);
+	if (reg != 0x10)
+		UTL_DEBUG_CMD("BUS SPACE WRITE: off 0x%02x <= 0x%08x (%s)", (int) reg, (int) val,
+			      busSpaceReg2str(reg));
+	sc->memory_descriptor_->prepare();
 	sc->memory_descriptor_->writeBytes(reg, &val, 4);
+	sc->memory_descriptor_->complete();
 }
 
-#define	RTSX_READ(sc, reg, val)			\
-do {						\
-int err = rtsx_read((sc), (reg), (val));	\
-if (err) 					\
-return (err);					\
-} while (0)
+#define	RTSX_READ(sc, reg, val) 				\
+	do { 							\
+		int err = rtsx_read((sc), (reg), (val)); 	\
+		if (err) 					\
+			return (err);				\
+	} while (0)
 
-#define	RTSX_WRITE(sc, reg, val)		\
-do { 						\
-int err = rtsx_write((sc), (reg), 0xff, (val));	\
-if (err) 					\
-return (err);					\
-} while (0)
+#define	RTSX_WRITE(sc, reg, val) 				\
+	do { 							\
+		int err = rtsx_write((sc), (reg), 0xff, (val));	\
+		if (err) 					\
+			return (err);				\
+	} while (0)
 
-#define	RTSX_CLR(sc, reg, bits)			\
-do { 						\
-int err = rtsx_write((sc), (reg), (bits), 0); 	\
-if (err) 					\
-return (err);					\
-} while (0)
+#define	RTSX_CLR(sc, reg, bits)					\
+	do { 							\
+		int err = rtsx_write((sc), (reg), (bits), 0); 	\
+		if (err) 					\
+			return (err);				\
+	} while (0)
 
-#define	RTSX_SET(sc, reg, bits)			\
-do { 						\
-int err = rtsx_write((sc), (reg), (bits), 0xff);\
-if (err) 					\
-return (err);					\
-} while (0)
+#define	RTSX_SET(sc, reg, bits)					\
+	do { 							\
+		int err = rtsx_write((sc), (reg), (bits), 0xff);\
+		if (err) 					\
+			return (err);				\
+	} while (0)
 
 int	rtsx_host_reset(sdmmc_chipset_handle_t);
 u_int32_t rtsx_host_ocr(sdmmc_chipset_handle_t);
@@ -144,10 +151,10 @@ int	rtsx_write_phy(struct rtsx_softc *, u_int8_t, u_int16_t);
 int	rtsx_read_cfg(struct rtsx_softc *, u_int8_t, u_int16_t, u_int32_t *);
 #ifdef notyet
 int	rtsx_write_cfg(struct rtsx_softc *, u_int8_t, u_int16_t, u_int32_t,
-		       u_int32_t);
+		u_int32_t);
 #endif
 void	rtsx_hostcmd(u_int32_t *, int *, u_int8_t, u_int16_t, u_int8_t,
-		     u_int8_t);
+		u_int8_t);
 int	rtsx_hostcmd_send(struct rtsx_softc *, int);
 u_int8_t rtsx_response_type(u_int16_t);
 int	rtsx_xfer(struct rtsx_softc *, struct sdmmc_command *, u_int32_t *);
@@ -159,7 +166,8 @@ void	rtsx_save_regs(struct rtsx_softc *);
 void	rtsx_restore_regs(struct rtsx_softc *);
 
 #ifdef RTSX_DEBUG
-#define DPRINTF(n,s)	do { if (n < UTL_DEBUG_LEVEL) printf s; } while (0)
+int rtsxdebug = 0;
+#define DPRINTF(n,s)	do { if ((n) <= rtsxdebug) printf s; } while (0)
 #else
 #define DPRINTF(n,s)	do {} while(0)
 #endif
@@ -266,13 +274,14 @@ static void rtsx_base_fetch_vendor_settings(struct rtsx_softc *pcr)
 }
 #endif
 
+// cholonam: See linux function rtsx_pci_init_hw
 int
 rtsx_init(struct rtsx_softc *sc, int attaching)
 {
 	u_int32_t status;
 	u_int8_t version;
 	int error;
-	
+
 	/* Read IC version from dummy register. */
 	if (sc->flags & RTSX_F_5229) {
 		RTSX_READ(sc, RTSX_DUMMY_REG, &version);
@@ -386,11 +395,7 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 
 	// cholonam: In linux this is done in rts5249_extra_init_hw
 	/* Request clock by driving CLKREQ pin to zero. */
-#if RTSX_MIMIC_LINUX
-	RTSX_SET(sc, 0xff03 /* RTSX_PETXCFG (wrong value!) */, RTSX_PETXCFG_CLKREQ_PIN);
-#else
 	RTSX_SET(sc, RTSX_PETXCFG, RTSX_PETXCFG_CLKREQ_PIN);
-#endif
 
 	/* Set up LED GPIO. */
 	if (sc->flags & RTSX_F_5209) {
@@ -438,15 +443,15 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 	
 	if (sc->flags & RTSX_F_REVERSE_SOCKET) {
 		UTL_LOG("Reverse socket found");
-		UTL_CHK_SUCCESS(rtsx_write(sc, 0xff03 /* RTSX_PETXCFG (wrong value!) */, 0xb0, 0xb0));
+		UTL_CHK_SUCCESS(rtsx_write(sc, RTSX_PETXCFG, 0xb0, 0xb0));
 	} else {
-		UTL_CHK_SUCCESS(rtsx_write(sc, 0xff03 /* RTSX_PETXCFG (wrong value!) */, 0xb0, 0x80));
+		UTL_CHK_SUCCESS(rtsx_write(sc, RTSX_PETXCFG, 0xb0, 0x80));
 	}
 	if (sc->flags & RTSX_F_FORCE_CLKREQ_0) {
 		UTL_LOG("FORCE_CLKREQ_0 found");
-		UTL_CHK_SUCCESS(rtsx_write(sc, 0xff03 /* RTSX_PETXCFG (wrong value!) */, 0x80, 0x80));
+		UTL_CHK_SUCCESS(rtsx_write(sc, RTSX_PETXCFG, 0x80, 0x80));
 	} else {
-		UTL_CHK_SUCCESS(rtsx_write(sc, 0xff03 /* RTSX_PETXCFG (wrong value!) */, 0x80, 0x00));
+		UTL_CHK_SUCCESS(rtsx_write(sc, RTSX_PETXCFG, 0x80, 0x00));
 	}
 #endif
 
@@ -850,6 +855,15 @@ rtsx_read(struct rtsx_softc *sc, u_int16_t addr, u_int8_t *val)
 	}
 	
 	*val = (reg & 0xff);
+#if __APPLE__ && DEBUG
+	if (addr != RTSX_PHY_DATA0 &&
+	    addr != RTSX_PHY_DATA1 &&
+	    addr != RTSX_PHY_ADDR &&
+	    addr != RTSX_PHY_RWCTL) { // log only if not phy-related
+		UTL_DEBUG_CMD("RTSX_READ:  addr: 0x%04x val: 0x%02x (tries: %d)", addr, *val, 1024 - tries);
+	}
+#endif
+	if (!tries) UTL_ERR("Returning ETIMEDOUT (addr=0x%04x)!", addr);
 	return (tries == 0) ? ETIMEDOUT : 0;
 }
 
@@ -868,15 +882,24 @@ rtsx_write(struct rtsx_softc *sc, u_int16_t addr, u_int8_t mask, u_int8_t val)
 		reg = READ4(sc, RTSX_HAIMR);
 		if (!(reg & RTSX_HAIMR_BUSY)) {
 			if (val != (reg & 0xff)) {
-				UTL_DEBUG(0, "rtsx_write returns EIO! (addr=0x%04x mask=0x%02x val=0x%02x)\n",
-					(int) addr, (int) mask, (int) val);
+				UTL_ERR("Returning EIO (addr=0x%04x mask=0x%02x val=0x%02x)!", addr, mask, val);
 				return EIO;
 			}
+#if __APPLE__ && DEBUG
+			if (addr != RTSX_PHY_DATA0 &&
+			    addr != RTSX_PHY_DATA1 &&
+			    addr != RTSX_PHY_ADDR &&
+			    addr != RTSX_PHY_RWCTL) { // log only if not phy-related
+				UTL_DEBUG_CMD("RTSX_WRITE: addr: 0x%04x mask: 0x%02x val: 0x%02x (tries: %d)", addr,
+					      mask, val, 1024 - tries);
+			}
+#endif
 			return 0;
 		}
 	}
-	UTL_DEBUG(0, "too many retries! (addr=0x%04x mask=0x%02x val=0x%02x)\n",
-		(int) addr, (int) mask, (int) val);
+
+	UTL_DEBUG_CMD("RTSX_WRITE: addr: 0x%04x mask: 0x%02x val: 0x%02x (tries: %d)", addr, mask, val, 1024 - tries);
+	UTL_ERR("Returning ETIMEDOUT (addr=0x%04x mask=0x%02x val=0x%02x)!", addr, mask, val);
 	return ETIMEDOUT;
 }
 
@@ -925,7 +948,10 @@ rtsx_write_phy(struct rtsx_softc *sc, u_int8_t addr, u_int16_t val)
 		if (!(rwctl & RTSX_PHY_BUSY))
 			break;
 	}
-	
+
+	UTL_DEBUG_CMD("RSTX_WRITE_PHY: addr: 0x%02x val: 0x%04x (tries: %d)", (int) addr, (int) val,
+		      100000 - timeout );
+
 	if (timeout == 0)
 		return ETIMEDOUT;
 	
@@ -1376,22 +1402,22 @@ rtsx_exec_command(sdmmc_chipset_handle_t sch, struct sdmmc_command *cmd)
 			/* First byte is CHECK_REG_CMD return value, second
 			 * one is the command op code -- we skip those. */
 			cmd->c_resp[0] =
-			((betoh32(cmdbuf[0]) & 0x0000ffff) << 16) |
-			((betoh32(cmdbuf[1]) & 0xffff0000) >> 16);
+			    ((betoh32(cmdbuf[0]) & 0x0000ffff) << 16) |
+			    ((betoh32(cmdbuf[1]) & 0xffff0000) >> 16);
 		}
 	}
-	
+
 	if (cmd->c_data) {
 		error = rtsx_xfer(sc, cmd, cmdbuf);
 		if (error) {
 			u_int8_t stat1;
-			
+
 			if (rtsx_read(sc, RTSX_SD_STAT1, &stat1) == 0 &&
 			    (stat1 & RTSX_SD_CRC_ERR))
 				printf("%s: CRC error\n", DEVNAME(sc));
 		}
 	}
-	
+
 unload_cmdbuf:
 	sc->dmap_cmd = NULL;
 unmap_cmdbuf:
@@ -1408,7 +1434,7 @@ void
 rtsx_soft_reset(struct rtsx_softc *sc)
 {
 	DPRINTF(1,("%s: soft reset\n", DEVNAME(sc)));
-	
+
 	/* Stop command transfer. */
 	WRITE4(sc, RTSX_HCBCTLR, RTSX_STOP_CMD);
 	
@@ -1538,10 +1564,10 @@ void
 rtsx_card_insert(struct rtsx_softc *sc)
 {
 	DPRINTF(1, ("%s: card inserted\n", DEVNAME(sc)));
-	
+
 	sc->flags |= RTSX_F_CARD_PRESENT;
 	(void)rtsx_led_enable(sc);
-	
+
 	/* Schedule card discovery task. */
 	sdmmc_needs_discover((struct device *)sc);
 }
@@ -1551,10 +1577,10 @@ void
 rtsx_card_eject(struct rtsx_softc *sc)
 {
 	DPRINTF(1, ("%s: card ejected\n", DEVNAME(sc)));
-	
+
 	sc->flags &= ~RTSX_F_CARD_PRESENT;
 	(void)rtsx_led_disable(sc);
-	
+
 	/* Schedule card discovery task. */
 	sdmmc_needs_discover((struct device *)sc);
 }
@@ -1567,17 +1593,16 @@ rtsx_intr(void *arg)
 {
 	struct rtsx_softc *sc = static_cast<struct rtsx_softc *>(arg);
 	u_int32_t enabled, status;
-	
+
 	enabled = READ4(sc, RTSX_BIER);
 	status = READ4(sc, RTSX_BIPR);
-	
+
 	/* Ack interrupts. */
-	UTL_DEBUG(2, "CLEARING PENDING INTERRUPTS.");
 	WRITE4(sc, RTSX_BIPR, status);
-	
+
 	// Log interrupt
 	//if (status && status != RTSX_SD_EXIST && status != 0xffffffff) {
-		UTL_DEBUG(1, "%s: INTERRUPT: STATUS = 0x%08x ENABLED = 0x%08x%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n",
+		UTL_DEBUG_INT("%s: INTERRUPT: STATUS = 0x%08x ENABLED = 0x%08x%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n",
 			    DEVNAME(sc), status, enabled,
 			    (status & RTSX_TRANS_OK_INT) ? " (TRANS OK)" : "",
 			    (status & RTSX_TRANS_FAIL_INT) ? " (TRANS FAIL)" : "",
@@ -1596,10 +1621,10 @@ rtsx_intr(void *arg)
 			    (status & RTSX_MS_EXIST) ? " MS_EXIST" : "",
 			    (status & RTSX_SD_EXIST) ? " SD_EXIST" : "");
 	//}
-	
+
 	if (((enabled & status) == 0) || status == 0xffffffff)
 		return 0;
-	
+
 	if (status & RTSX_SD_INT) {
 		if (status & RTSX_SD_EXIST) {
 			if (!ISSET(sc->flags, RTSX_F_CARD_PRESENT))
@@ -1607,9 +1632,8 @@ rtsx_intr(void *arg)
 		} else {
 			rtsx_card_eject(sc);
 		}
-		DPRINTF(1, ("rtsx_card_(insert|eject) RETURNED!"));
 	}
-	
+
 	if (status & (RTSX_TRANS_OK_INT | RTSX_TRANS_FAIL_INT)) {
 #if RTSX_USE_IOCOMMANDGATE
         sc->intr_status_event = true;
