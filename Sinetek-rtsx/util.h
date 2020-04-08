@@ -99,6 +99,17 @@ static inline const char *mmcCmd2str(uint16_t mmcCmd) {
 }
 #endif // DEBUG || SDMMC_DEBUG
 
+#if DEBUG
+static inline const char *busSpaceReg2str(IOByteCount offset) {
+	return offset == 0x00 ? "HCBAR" :
+	offset == 0x04 ? "HCBCTLR" :
+	offset == 0x08 ? "HDBAR" :
+	offset == 0x10 ? "HAIMR" :
+	offset == 0x14 ? "BIPR" :
+	offset == 0x18 ? "BIER" : "?";
+}
+#endif // DEBUG
+
 #define UTL_CHK_PTR(ptr, ret) do { \
 if (!(ptr)) { \
 	UTL_ERR("null pointer (%s) found!!!", #ptr); \
