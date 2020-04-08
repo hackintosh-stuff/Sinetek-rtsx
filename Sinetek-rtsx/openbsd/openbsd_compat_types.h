@@ -3,12 +3,12 @@
 
 #include <libkern/libkern.h> // size_t
 
+// defined in sys/arch/amd64/include/bus.h
 typedef u_long bus_addr_t;
+typedef u_long bus_size_t;
+
 typedef void*  bus_dmamap_callback_t; // don't know the type yet!
-//typedef void*  bus_dmasync_op_t; // don't know the type yet!
-//typedef void*  bus_dma_segment_t; // don't know the type yet!
 typedef void*  bus_dma_tag_t; // don't know the type yet!
-typedef u_long bus_size_t; // don't know the type yet!
 typedef void*  bus_space_handle_t; // don't know the type yet!
 typedef void*  bus_space_tag_t; // don't know the type yet!
 

@@ -645,16 +645,16 @@ sdmmc_init(struct sdmmc_softc *sc)
 void
 sdmmc_delay(u_int usecs)
 {
+#if __APPLE__
+	delay(usecs);
+#else
 	int nticks = usecs / (1000000 / hz);
 
 	if (!cold && nticks > 0)
-#if __APPLE__
-		tsleep((void *)&sdmmc_delay, PWAIT, "mmcdly", nticks);
-#else
 		tsleep(&sdmmc_delay, PWAIT, "mmcdly", nticks);
-#endif
 	else
 		delay(usecs);
+#endif
 }
 
 int

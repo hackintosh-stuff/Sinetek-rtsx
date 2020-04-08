@@ -313,14 +313,21 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 			return (1);
 		}
 	}
-#if RTSX_MIMIC_LINUX
+#if __APPLE__
 	else if (sc->flags & RTSX_F_525A) {
 		RTSX_READ(sc, RTSX_DUMMY_REG, &version);
-		UTL_DEBUG_DEF("Chip version: %c", 'A' + (version & 0x0F));
+		version &= 0x0f;
+		if (!(version & 0x03)) {
+			UTL_DEBUG_DEF("Chip version %c found", 'A' + version);
+		} else {
+			UTL_ERR("Chip version unknown (%d)", version);
+		}
+#if RTSX_MIMIC_LINUX
 		if ((version & 0x0F) == RTSX_IC_VERSION_A)
 			sc->flags |= RTSX_F_525A_TYPE_A;
-	}
 #endif
+	}
+#endif /* __APPLE__ */
 
 	/* Enable interrupt write-clear (default is read-clear). */
 	RTSX_CLR(sc, RTSX_NFTS_TX_CTRL, RTSX_INT_READ_CLR);
@@ -885,7 +892,14 @@ rtsx_read(struct rtsx_softc *sc, u_int16_t addr, u_int8_t *val)
 	}
 
 	*val = (reg & 0xff);
-	UTL_DEBUG_CMD("RTSX_READ:  addr: 0x%04x val: 0x%02x (tries: %d)", addr, *val, 1024 - tries);
+#if __APPLE__ && DEBUG
+	if (addr != RTSX_PHY_DATA0 &&
+	    addr != RTSX_PHY_DATA1 &&
+	    addr != RTSX_PHY_ADDR &&
+	    addr != RTSX_PHY_RWCTL) { // log only if not phy-related
+		UTL_DEBUG_CMD("RTSX_READ:  addr: 0x%04x val: 0x%02x (tries: %d)", addr, *val, 1024 - tries);
+	}
+#endif
 	if (!tries) UTL_ERR("Returning ETIMEDOUT (addr=0x%04x)!", addr);
 	return (tries == 0) ? ETIMEDOUT : 0;
 }
@@ -908,7 +922,15 @@ rtsx_write(struct rtsx_softc *sc, u_int16_t addr, u_int8_t mask, u_int8_t val)
 				UTL_ERR("Returning EIO (addr=0x%04x mask=0x%02x val=0x%02x)!", addr, mask, val);
 				return EIO;
 			}
-			UTL_DEBUG_CMD("RTSX_WRITE: addr: 0x%04x val: 0x%02x (tries: %d)", addr, val, 1024 - tries);
+#if __APPLE__ && DEBUG
+			if (addr != RTSX_PHY_DATA0 &&
+			    addr != RTSX_PHY_DATA1 &&
+			    addr != RTSX_PHY_ADDR &&
+			    addr != RTSX_PHY_RWCTL) { // log only if not phy-related
+				UTL_DEBUG_CMD("RTSX_WRITE: addr: 0x%04x val: 0x%02x (tries: %d)", addr, val,
+					      1024 - tries);
+			}
+#endif
 			return 0;
 		}
 	}
@@ -963,6 +985,9 @@ rtsx_write_phy(struct rtsx_softc *sc, u_int8_t addr, u_int16_t val)
 		if (!(rwctl & RTSX_PHY_BUSY))
 			break;
 	}
+
+	UTL_DEBUG_CMD("RSTX_WRITE_PHY: addr: 0x%02x val: 0x%04x (tries: %d)", (int) addr, (int) val,
+		      100000 - timeout );
 	
 	if (timeout == 0)
 		return ETIMEDOUT;
@@ -1671,7 +1696,8 @@ rtsx_intr(void *arg)
 		sc->intr_status |= status;
 #if UTL_LOG_DELAY_MS > 0
 		// Sleep a bit to prevent wakeup being called before the tsleep
-		IOSleep(400); // sleep a bit...
+		// TODO: Maybe we don't need to sleep because the client will not wait if intr_status is already set
+		IOSleep((UTL_LOG_DELAY_MS) * 8); // sleep a bit...
 #endif
 		wakeup(&sc->intr_status);
 	}

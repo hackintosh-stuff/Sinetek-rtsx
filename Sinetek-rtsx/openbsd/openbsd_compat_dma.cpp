@@ -1,5 +1,6 @@
 #include "openbsd_compat_dma.h"
 
+#include <libkern/OSAtomic.h> // OSSynchronizeIO
 #include <sys/errno.h>
 #include <string.h> // bzero
 #include <IOKit/IOBufferMemoryDescriptor.h>
@@ -98,6 +99,7 @@ bus_dmamap_sync(bus_dma_tag_t tag, bus_dmamap_t dmam, bus_addr_t offset, bus_siz
 {
 	// This function should probably call prepare() / complete(), but we already call them in
 	// bus_dmamem_alloc()/bus_dmamem_free()
+	OSSynchronizeIO(); // this is actually a noop on Intel
 	return;
 }
 

@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 extern bus_space_tag_t    gBusSpaceTag;
-extern bus_space_handle_t gBusSpaceHandle;
+
 extern bus_dma_tag_t      gBusDmaTag;
 
 /// Allocate and initialize a DMA handle
