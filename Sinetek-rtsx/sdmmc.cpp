@@ -263,14 +263,7 @@ restart:
 			UTL_DEBUG_LOOP("func returns");
 			s = splsdmmc();
 		}
-#if __APPLE__
-		// This is sleeping with a lock held!!!
-		splx(s); // release the lock before waiting
-#endif
 		tsleep_nsec(&sc->sc_tskq, PWAIT, "mmctsk", INFSLP);
-#if __APPLE__
-		splsdmmc(); // and lock again
-#endif
 	}
 	splx(s);
 

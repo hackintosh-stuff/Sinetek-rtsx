@@ -1584,14 +1584,8 @@ rtsx_wait_intr(struct rtsx_softc *sc, int mask, int secs)
 	s = splsdmmc();
 	status = sc->intr_status & mask;
 	while (status == 0) {
-#if __APPLE__
-		splx(s); // cholonam: must release the lock or panic
-#endif
-		auto e = tsleep_nsec(&sc->intr_status, PRIBIO, "rtsxintr", SEC_TO_NSEC(secs));
-#if __APPLE__
-		s = splsdmmc();
-#endif
-		if (e == EWOULDBLOCK) {
+		if (tsleep_nsec(&sc->intr_status, PRIBIO, "rtsxintr",
+		    SEC_TO_NSEC(secs)) == EWOULDBLOCK) {
 			rtsx_soft_reset(sc);
 			error = ETIMEDOUT;
 			break;

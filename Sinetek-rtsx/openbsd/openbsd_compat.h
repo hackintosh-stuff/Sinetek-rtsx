@@ -32,11 +32,6 @@ __END_DECLS
 #endif
 #include "util.h"
 
-#if RTSX_USE_IOLOCK
-#define INFSLP 0 // -1?
-#define tlseep_nsec(a1, a2, a3, a4) do {} while(0)
-#endif // RTSX_USE_IOLOCK
-
 // disable execcisve logging from OpenBSD code
 #if OPENBSD_CODE_DEBUG
 #define printf(...) UTL_DEBUG_DEF(__VA_ARGS__)

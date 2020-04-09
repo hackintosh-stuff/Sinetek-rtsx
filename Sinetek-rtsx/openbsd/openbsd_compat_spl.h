@@ -25,6 +25,9 @@ typedef unsigned spl_t;
 	RTSX_OPENBSD_COMPAT_SPL_DBG("splx called from %s (line %d)", __FILE__, __LINE__); \
 })
 
+// to be called only by openbsd_compat_tsleep.cpp
+void *Sinetek_rtsx_openbsd_compat_spl_getGlobalLock();
+
 spl_t Sinetek_rtsx_openbsd_compat_splbio();
 
 spl_t Sinetek_rtsx_openbsd_compat_splhigh();
