@@ -317,7 +317,7 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 	else if (sc->flags & RTSX_F_525A) {
 		RTSX_READ(sc, RTSX_DUMMY_REG, &version);
 		version &= 0x0f;
-		if (!(version & 0x03)) {
+		if (version < 4) {
 			UTL_DEBUG_DEF("Chip version %c found", 'A' + version);
 		} else {
 			UTL_ERR("Chip version unknown (%d)", version);
