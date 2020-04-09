@@ -24,6 +24,7 @@ __END_DECLS
 #include "openbsd_compat_dma.h" // DMA-related functions
 #include "openbsd_compat_kthread.h" // kthread_*
 #include "openbsd_compat_queue.h" // SIMPLEQ -> STAILQ
+#include "openbsd_compat_rwlock.h" // rw_*
 #include "openbsd_compat_spl.h" // spl*
 #include "openbsd_compat_tsleep.h" // tsleep_nsec
 
@@ -57,12 +58,6 @@ do { \
 // attributes
 #define __packed __attribute__((packed))
 #define __aligned(N) __attribute__((aligned(N)))
-
-// rwlock
-#define rw_init(a1, a2) do {} while (0)
-#define rw_assert_wrlock(a1) do {} while (0)
-#define rw_enter_write(a1) do {} while (0)
-#define rw_exit(a1) do {} while (0)
 
 constexpr int cold = 1;
 struct rtsx_proc {

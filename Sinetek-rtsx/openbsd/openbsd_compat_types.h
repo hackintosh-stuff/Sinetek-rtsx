@@ -13,7 +13,8 @@ typedef void*  bus_space_handle_t; // don't know the type yet!
 typedef void*  bus_space_tag_t; // don't know the type yet!
 
 struct rwlock {
-	int dummy;
+	void *dummy; // a IORWLock
+	const char *name;
 };
 
 struct IOBufferMemoryDescriptor; // forward declaration
