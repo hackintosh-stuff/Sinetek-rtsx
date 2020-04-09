@@ -414,12 +414,8 @@ void Sinetek_rtsx::blk_detach()
 #if RTSX_USE_IOFIES
 static uint32_t READ4(Sinetek_rtsx *sc, IOByteCount offset) {
 	uint32_t ret = 0;
-	sc->memory_descriptor_->prepare();
 	sc->memory_descriptor_->readBytes(offset, &ret, 4);
-	sc->memory_descriptor_->complete();
-	if (offset != 0x10)
-		UTL_DEBUG_CMD("BUS SPACE READ:  off 0x%02x => 0x%08x (%s)", (int) offset, (int) ret,
-			      busSpaceReg2str(offset));
+	// we cannot log here
 	return ret;
 }
 
