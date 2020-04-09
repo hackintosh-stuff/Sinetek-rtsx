@@ -140,12 +140,17 @@ do { \
 } while (0)
 #endif // RTSX_USE_IOMALLOC
 
+static inline AbsoluteTime nsecs2AbsoluteTimeDeadline(uint64_t nsecs) {
+	AbsoluteTime absInterval, deadline;
+	nanoseconds_to_absolutetime(nsecs, &absInterval);
+	clock_absolutetime_interval_to_deadline(absInterval, &deadline);
+	return deadline;
+}
+
 static inline AbsoluteTime timo2AbsoluteTimeDeadline(int timo) {
 	extern int hz;
 	uint64_t nsDelay = (uint64_t) timo / hz * 1000000000LL;
-	AbsoluteTime absInterval, deadline;
-	nanoseconds_to_absolutetime(nsDelay, &absInterval);
-	clock_absolutetime_interval_to_deadline(absInterval, &deadline);
+	AbsoluteTime deadline = nsecs2AbsoluteTimeDeadline(nsDelay);
 	return deadline;
 }
 
