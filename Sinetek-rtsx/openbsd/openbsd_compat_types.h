@@ -12,9 +12,9 @@ typedef void*  bus_dma_tag_t; // don't know the type yet!
 typedef void*  bus_space_handle_t; // don't know the type yet!
 typedef void*  bus_space_tag_t; // don't know the type yet!
 
+#define LCK_RW_T_SIZE 16 /* from the Darwin kernel source */
 struct rwlock {
-	void *dummy; // a IORWLock
-	const char *name;
+	uint8_t space[2 * LCK_RW_T_SIZE]; // take twice the space, just in case
 };
 
 struct IOBufferMemoryDescriptor; // forward declaration

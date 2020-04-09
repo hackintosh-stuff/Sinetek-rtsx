@@ -15,6 +15,13 @@
 
 int tsleep_nsec(void *ident, int priority, const char *wmesg, uint64_t nsecs)
 {
+	UTL_DEBUG_DEF("%s: tsleep_nsec called (havelock=%d)", wmesg ? wmesg : "(null)",
+		      IORecursiveLockHaveLock((IORecursiveLock *) Sinetek_rtsx_openbsd_compat_spl_getGlobalLock()));
+	if (!IORecursiveLockHaveLock((IORecursiveLock *) Sinetek_rtsx_openbsd_compat_spl_getGlobalLock())) {
+		UTL_ERR("Lock is not held (wmesg=%s, nsecs=%lld)!", wmesg ? wmesg : "(null)", (int64_t) nsecs);
+		IOSleep(1); // just sleep for a bit since we are probably waiting for something
+		return EAGAIN;
+	}
 	int ret;
 	if (nsecs == INFSLP) {
 		// sleep without deadline
@@ -24,6 +31,7 @@ int tsleep_nsec(void *ident, int priority, const char *wmesg, uint64_t nsecs)
 		ret = IORecursiveLockSleepDeadline((IORecursiveLock *) Sinetek_rtsx_openbsd_compat_spl_getGlobalLock(),
 						   ident, nsecs2AbsoluteTimeDeadline(nsecs), THREAD_UNINT);
 	}
+	UTL_DEBUG_DEF("tsleep_nsec ret = %d", ret);
 	// See: https://github.com/apple/darwin-xnu/blob/master/bsd/kern/kern_synch.c
 	if (ret == THREAD_TIMED_OUT) {
 		return EWOULDBLOCK;
@@ -33,7 +41,10 @@ int tsleep_nsec(void *ident, int priority, const char *wmesg, uint64_t nsecs)
 }
 
 int wakeup(void *ident) {
+	UTL_DEBUG_DEF("wakeup called (havelock=%d)",
+		      IORecursiveLockHaveLock((IORecursiveLock *) Sinetek_rtsx_openbsd_compat_spl_getGlobalLock()));
 	IORecursiveLockWakeup((IORecursiveLock *) Sinetek_rtsx_openbsd_compat_spl_getGlobalLock(),
 			      ident, true);
+	UTL_DEBUG_DEF("wakeup returns");
 	return 0;
 }
