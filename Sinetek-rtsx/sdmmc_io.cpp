@@ -322,7 +322,7 @@ int
 sdmmc_print(void *aux, const char *pnp)
 {
 #if __APPLE__
-	struct sdmmc_attach_args *sa = (sdmmc_attach_args *) aux;
+	struct sdmmc_attach_args *sa = (struct sdmmc_attach_args *) aux;
 #else
 	struct sdmmc_attach_args *sa = aux;
 #endif
@@ -791,7 +791,7 @@ sdmmc_intr_establish(struct device *sdmmc, int (*fun)(void *),
 		return NULL;
 
 #if __APPLE__
-	ih = (sdmmc_intr_handler *) malloc(sizeof *ih, M_DEVBUF, M_WAITOK | M_CANFAIL | M_ZERO);
+	ih = (struct sdmmc_intr_handler *) malloc(sizeof *ih, M_DEVBUF, M_WAITOK | M_CANFAIL | M_ZERO);
 #else
 	ih = malloc(sizeof *ih, M_DEVBUF, M_WAITOK | M_CANFAIL | M_ZERO);
 #endif

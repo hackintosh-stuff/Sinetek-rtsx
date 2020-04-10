@@ -4,7 +4,9 @@
 #include <os/log.h>
 
 #include <IOKit/IOLib.h> // IOSleep
+#if __cplusplus
 #include <IOKit/IOMemoryDescriptor.h> // IOMemoryDescriptor
+#endif
 
 #ifndef UTL_THIS_CLASS
 #error UTL_THIS_CLASS must be defined before including this file (i.e.: #define UTL_THIS_CLASS "SDDisk::").
@@ -15,7 +17,7 @@
 #endif
 
 #define UTL_ERR(fmt, ...) do { \
-	os_log_error(OS_LOG_DEFAULT, "rtsx: %14s%-22s: " fmt "\n", \
+	os_log_error(OS_LOG_DEFAULT, "rtsx:\t%14s%-22s: " fmt "\n", \
 		UTL_THIS_CLASS, __func__, ##__VA_ARGS__); \
 	if (UTL_LOG_DELAY_MS) IOSleep(UTL_LOG_DELAY_MS); /* Wait for log to appear... */ \
 } while (0)
@@ -38,9 +40,6 @@
 #if DEBUG
 #ifndef UTL_DEBUG_LEVEL
 #	define UTL_DEBUG_LEVEL 0x01 // only default messages
-#else
-#	undef UTL_DEBUG_LEVEL
-#	define UTL_DEBUG_LEVEL (0x03|UTL_DEBUG_LVL_INT) // only cmd and default messages
 #endif
 
 #define UTL_DEBUG(lvl, fmt, ...) \
@@ -104,6 +103,7 @@ static inline const char *busSpaceReg2str(IOByteCount offset) {
 	return offset == 0x00 ? "HCBAR" :
 	offset == 0x04 ? "HCBCTLR" :
 	offset == 0x08 ? "HDBAR" :
+	offset == 0x0c ? "HDBCTLR" :
 	offset == 0x10 ? "HAIMR" :
 	offset == 0x14 ? "BIPR" :
 	offset == 0x18 ? "BIER" : "?";
@@ -140,6 +140,20 @@ do { \
 } while (0)
 #endif // RTSX_USE_IOMALLOC
 
+#if DEBUG
+#define UTL_SAFE_RELEASE_NULL(ptr) \
+do { \
+	if (!(ptr)) \
+		UTL_ERR("%s: Tried to release null pointer!", #ptr); \
+	/* if ((ptr)->getRetainCount() != 1) \
+		UTL_ERR("%s: Wrong retain count (%d)", #ptr, (ptr)->getRetainCount()); */ \
+	(ptr)->release(); \
+	(ptr) = nullptr; \
+} while (0)
+#else
+#define UTL_SAFE_RELEASE_NULL(ptr) OSSafeReleaseNULL(ptr)
+#endif
+
 static inline AbsoluteTime nsecs2AbsoluteTimeDeadline(uint64_t nsecs) {
 	AbsoluteTime absInterval, deadline;
 	nanoseconds_to_absolutetime(nsecs, &absInterval);
@@ -153,6 +167,8 @@ static inline AbsoluteTime timo2AbsoluteTimeDeadline(int timo) {
 	AbsoluteTime deadline = nsecs2AbsoluteTimeDeadline(nsDelay);
 	return deadline;
 }
+
+#if __cplusplus
 
 /// Only valid between prepare() and complete()
 static inline size_t bufferNSegments(IOMemoryDescriptor *md) {
@@ -186,6 +202,8 @@ static inline void dumpBuffer(IOMemoryDescriptor *md) {
 	}
 #endif // DEBUG
 }
+
+#endif // __cplusplus
 
 #define RTSX_PTR_FMT "0x%08x%08x"
 #define RTSX_PTR_FMT_VAR(ptr) (uint32_t) ((uintptr_t) ptr >> 32), (uint32_t) (uintptr_t) ptr

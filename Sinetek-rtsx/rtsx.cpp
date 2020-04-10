@@ -256,7 +256,7 @@ destroy_cmd:
 	return 1;
 }
 
-#if RTSX_MIMIC_LINUX
+#if DEBUG && RTSX_MIMIC_LINUX
 static void rtsx_base_fetch_vendor_settings(struct rtsx_softc *pcr)
 {
 	int rtsx_read_cfg(struct rtsx_softc *sc, u_int8_t func, u_int16_t addr, u_int32_t *val);
@@ -927,15 +927,15 @@ rtsx_write(struct rtsx_softc *sc, u_int16_t addr, u_int8_t mask, u_int8_t val)
 			    addr != RTSX_PHY_DATA1 &&
 			    addr != RTSX_PHY_ADDR &&
 			    addr != RTSX_PHY_RWCTL) { // log only if not phy-related
-				UTL_DEBUG_CMD("RTSX_WRITE: addr: 0x%04x val: 0x%02x (tries: %d)", addr, val,
-					      1024 - tries);
+				UTL_DEBUG_CMD("RTSX_WRITE: addr: 0x%04x mask: 0x%02x val: 0x%02x (tries: %d)", addr,
+					      mask, val, 1024 - tries);
 			}
 #endif
 			return 0;
 		}
 	}
 
-	UTL_DEBUG_CMD("RTSX_WRITE: addr: 0x%04x val: 0x%02x (tries: %d)", addr, val, 1024 - tries);
+	UTL_DEBUG_CMD("RTSX_WRITE: addr: 0x%04x mask: 0x%02x val: 0x%02x (tries: %d)", addr, mask, val, 1024 - tries);
 	UTL_ERR("Returning ETIMEDOUT (addr=0x%04x mask=0x%02x val=0x%02x)!", addr, mask, val);
 	return ETIMEDOUT;
 }
@@ -1167,7 +1167,7 @@ rtsx_hostcmd_send(struct rtsx_softc *sc, int ncmd)
 
 	/* Tell the chip where the command buffer is and run the commands. */
 	WRITE4(sc, RTSX_HCBAR, sc->dmap_cmd->dm_segs[0].ds_addr);
-	UTL_DEBUG_DEF("Run the commands!");
+	// UTL_DEBUG_DEF("Run the commands!");
 	WRITE4(sc, RTSX_HCBCTLR,
 	    ((ncmd * 4) & 0x00ffffff) | RTSX_START_CMD | RTSX_HW_AUTO_RSP);
 
@@ -1497,7 +1497,9 @@ rtsx_exec_command(sdmmc_chipset_handle_t sch, struct sdmmc_command *cmd)
 	    BUS_DMASYNC_PREWRITE);
 
 	/* Run the command queue and wait for completion. */
-	UTL_DEBUG_CMD("Sending commands to queue (ncmd=%d)...", ncmd);
+	UTL_DEBUG(1, "Executing cmd %d (%s) (sending %d commands) and waiting...",
+		  cmd->c_opcode,
+		  mmcCmd2str(cmd->c_opcode), ncmd);
 	error = rtsx_hostcmd_send(sc, ncmd);
 	// cholonam: Beware that there must be no debug messages here, otherwise the interrupt (and the wakeup()
 	// it does) will arrive before rtsx_wait_intr and we'll miss it.

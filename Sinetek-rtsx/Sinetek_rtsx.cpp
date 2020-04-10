@@ -256,6 +256,7 @@ void Sinetek_rtsx::rtsx_pci_detach()
 	IOLockFree(this->intr_status_lock);
 	this->intr_status_lock = nullptr;
 #endif // RTSX_USE_IOLOCK
+	// TODO: test map_->release();
 }
 
 // TODO: Seems like this is wrong. Power states should match those supported by the OpenBSD driver.

@@ -893,10 +893,15 @@ sdmmc_dump_command(struct sdmmc_softc *sc, struct sdmmc_command *cmd)
 
 	rw_assert_wrlock(&sc->sc_lock);
 
-	UTL_DEBUG_CMD("%s: cmd %u arg=%#x data=%p dlen=%d flags=%#x "
-	    "proc=\"%s\" (error %d)\n", DEVNAME(sc), cmd->c_opcode,
-	    cmd->c_arg, cmd->c_data, cmd->c_datalen, cmd->c_flags,
-	    curproc ? curproc->p_p->ps_comm : "", cmd->c_error);
+	if (cmd->c_error) {
+		UTL_ERR("%s: cmd %u (%s) arg=%#x data=%p dlen=%d flags=%#x proc=\"%s\" "
+			"(error %d)\n", DEVNAME(sc), cmd->c_opcode, mmcCmd2str(cmd->c_opcode),
+			cmd->c_arg, cmd->c_data, cmd->c_datalen, cmd->c_flags, "", cmd->c_error);
+	} else {
+		UTL_DEBUG_CMD("%s: cmd %u (%s) arg=%#x data=%p dlen=%d flags=%#x proc=\"%s\" "
+			      "(error %d)\n", DEVNAME(sc), cmd->c_opcode, mmcCmd2str(cmd->c_opcode),
+			      cmd->c_arg, cmd->c_data, cmd->c_datalen, cmd->c_flags, "", cmd->c_error);
+	}
 
 	if (cmd->c_error || sdmmcdebug < 1)
 		return;

@@ -13,7 +13,6 @@ __BEGIN_DECLS
 __END_DECLS
 
 #include <IOKit/IOLib.h> // IOMalloc / IOFree
-#include <IOKit/IOTimerEventSource.h>
 
 // other headers from OpenBSD (they have to be at the end since they use types defined here
 #define _KERNEL // needed by some headers
@@ -59,20 +58,11 @@ do { \
 #define __packed __attribute__((packed))
 #define __aligned(N) __attribute__((aligned(N)))
 
-constexpr int cold = 1;
-struct rtsx_proc {
-	struct ps_comm_st {
-		const char *ps_comm;
-	};
-	struct ps_comm_st *p_p;
-};
-constexpr rtsx_proc *curproc = nullptr;
+static const int cold = 1;
 
 // scsi
 #define sdmmc_scsi_attach(a1) do {} while (0)
 #define sdmmc_scsi_detach(a1) do {} while (0)
-
-extern int hz;
 
 #include "device.h"
 #include "sdmmc_ioreg.h"
@@ -82,7 +72,7 @@ extern int hz;
 #include "sdmmcvar.h"
 #include "rtsxreg.h"
 #include "rtsxvar.h"
-#include "Sinetek_rtsx.hpp"
+//#include "Sinetek_rtsx.hpp"
 
 #define be32toh OSSwapBigToHostInt32
 #define betoh32 OSSwapBigToHostInt32

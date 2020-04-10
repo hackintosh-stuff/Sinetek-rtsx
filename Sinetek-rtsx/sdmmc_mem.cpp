@@ -564,13 +564,18 @@ sdmmc_mem_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 	rw_assert_wrlock(&sc->sc_lock);
 
 	if (sdmmc_select_card(sc, sf) != 0 ||
-	    sdmmc_mem_set_blocklen(sc, sf) != 0)
+	    sdmmc_mem_set_blocklen(sc, sf) != 0) {
+		UTL_ERR("select_card/set_blocklen failed!");
 		error = 1;
+	}
 
-	if (ISSET(sc->sc_flags, SMF_SD_MODE))
+	if (ISSET(sc->sc_flags, SMF_SD_MODE)) {
+		UTL_DEBUG_DEF("Initializing SD memory...");
 		error = sdmmc_mem_sd_init(sc, sf);
-	else
+	} else {
+		UTL_DEBUG_DEF("Initializing MMC memory...");
 		error = sdmmc_mem_mmc_init(sc, sf);
+	}
 
 	return error;
 }
@@ -869,6 +874,10 @@ sdmmc_mem_send_op_cond(struct sdmmc_softc *sc, u_int32_t ocr,
 		error = ETIMEDOUT;
 		sdmmc_delay(10000);
 	}
+
+#if __APPLE__
+	UTL_DEBUG_DEF("c_resp[0]=0x%08x i=%d error=%d", cmd.c_resp[0], i, error);
+#endif
 	if (error == 0 && ocrp != NULL)
 		*ocrp = MMC_R3(cmd.c_resp);
 
