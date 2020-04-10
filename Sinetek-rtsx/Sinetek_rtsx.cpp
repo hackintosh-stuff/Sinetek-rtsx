@@ -131,6 +131,9 @@ void Sinetek_rtsx::stop(IOService *provider)
 	}
 	PMstop();
 
+
+	IOSleep(1000); // give the worker thread some time to finish TODO: Fix this!
+
 	super::stop(provider);
 	UTL_LOG("Driver stopped.");
 }
