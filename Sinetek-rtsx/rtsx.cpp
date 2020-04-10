@@ -1562,8 +1562,11 @@ rtsx_soft_reset(struct rtsx_softc *sc)
 	/* Stop command transfer. */
 	WRITE4(sc, RTSX_HCBCTLR, RTSX_STOP_CMD);
 
+#if !__APPLE__ || !RTSX_MIMIC_LINUX
+	// linux does not do this...
 	(void)rtsx_write(sc, RTSX_CARD_STOP, RTSX_SD_STOP|RTSX_SD_CLR_ERR,
 		    RTSX_SD_STOP|RTSX_SD_CLR_ERR);
+#endif
 
 	/* Stop DMA transfer. */
 	WRITE4(sc, RTSX_HDBCTLR, RTSX_STOP_DMA);
