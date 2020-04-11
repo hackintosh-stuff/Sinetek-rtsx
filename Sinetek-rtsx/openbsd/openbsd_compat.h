@@ -117,4 +117,12 @@ static inline void delay(unsigned int microseconds) {
 #pragma clang diagnostic ignored "-Wunused-variable"
 #pragma clang diagnostic ignored "-Wwritable-strings"
 
+extern void *Sinetek_rtsx_openbsd_compat_owner;
+
+/// Call the start function on the ::start() method of the main kext class
+int openbsd_compat_start(void *owner);
+
+/// Call the stop function on the ::stop() method of the main kext class
+void openbsd_compat_stop(void);
+
 #endif // SINETEK_RTSX_OPENBSD_OPENBSD_COMPAT_H

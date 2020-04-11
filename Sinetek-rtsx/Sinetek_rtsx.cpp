@@ -90,6 +90,9 @@ bool Sinetek_rtsx::start(IOService *provider)
 	provider_->setMemoryEnable(true);
 
 	prepare_task_loop();
+	if (openbsd_compat_start(this)) {
+		goto ERROR;
+	}
 	rtsx_pci_attach();
 	
 	PMinit();
@@ -122,6 +125,7 @@ ERROR:
 void Sinetek_rtsx::stop(IOService *provider)
 {
 	rtsx_pci_detach();
+	openbsd_compat_stop();
 	destroy_task_loop();
 	if (workloop_) {
 		workloop_->release();
