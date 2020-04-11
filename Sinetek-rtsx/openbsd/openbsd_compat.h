@@ -60,10 +60,6 @@ do { \
 
 static const int cold = 1;
 
-// scsi
-#define sdmmc_scsi_attach(a1) do {} while (0)
-#define sdmmc_scsi_detach(a1) do {} while (0)
-
 #include "device.h"
 #include "sdmmc_ioreg.h"
 #include "sdmmcchip.h"
@@ -124,5 +120,14 @@ int openbsd_compat_start(void *owner);
 
 /// Call the stop function on the ::stop() method of the main kext class
 void openbsd_compat_stop(void);
+
+// forward-declare sdmmc_softc
+struct sdmmc_softc;
+
+/// Should attach the block device (SDDisk)
+int sdmmc_scsi_attach(struct sdmmc_softc *sc);
+
+/// Should detach the block device (SDDisk)
+int sdmmc_scsi_detach(struct sdmmc_softc *sc);
 
 #endif // SINETEK_RTSX_OPENBSD_OPENBSD_COMPAT_H

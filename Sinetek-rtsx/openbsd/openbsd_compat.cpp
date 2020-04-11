@@ -30,3 +30,19 @@ void openbsd_compat_stop()
 	((Sinetek_rtsx *)Sinetek_rtsx_openbsd_compat_owner)->release();
 	Sinetek_rtsx_openbsd_compat_owner = nullptr;
 }
+
+/// Should attach the block device (SDDisk)
+int sdmmc_scsi_attach(sdmmc_softc *sc)
+{
+	UTL_CHK_PTR(sc, ENOTSUP); // not initialized
+	((Sinetek_rtsx *)Sinetek_rtsx_openbsd_compat_owner)->blk_attach();
+	return 0;
+}
+
+/// Should detach the block device (SDDisk)
+int sdmmc_scsi_detach(sdmmc_softc *sc)
+{
+	UTL_CHK_PTR(sc, ENOTSUP); // not initialized
+	((Sinetek_rtsx *)Sinetek_rtsx_openbsd_compat_owner)->blk_detach();
+	return 0;
+}
