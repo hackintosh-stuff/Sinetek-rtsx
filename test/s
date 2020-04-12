@@ -1,0 +1,14 @@
+#!/bin/bash
+
+DEV="/dev/disk4"
+# 1 MiB
+NBYTES=$((1 * 1024 * 1024))
+
+# get root
+sudo true
+
+echo "Read speed..."
+for bs in 512 4096 65536; do
+	echo "-> Block size: $bs"
+	sudo dd if="$DEV" of=/dev/null bs=$bs count=$((NBYTES/bs)) 2>&1 | grep -v ' records '
+done
