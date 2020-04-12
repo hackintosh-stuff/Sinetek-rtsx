@@ -230,7 +230,12 @@ rtsx_attach(struct rtsx_softc *sc, bus_space_tag_t iot,
 	saa.sct = &rtsx_functions;
 	saa.sch = sc;
 	saa.flags = SMF_STOP_AFTER_MULTIPLE;
+#if __APPLE__
+	// ADMA not supported yet
+	saa.caps = SMC_CAPS_4BIT_MODE;
+#else
 	saa.caps = SMC_CAPS_4BIT_MODE | SMC_CAPS_DMA;
+#endif
 	saa.dmat = sc->dmat;
 
 	sc->sdmmc = config_found(&sc->sc_dev, &saa, NULL);
