@@ -227,8 +227,8 @@ IOReturn SDDisk::reportRemovability(bool *isRemovable)
 
 IOReturn SDDisk::reportWriteProtection(bool *isWriteProtected)
 {
-	UTL_DEBUG_FUN("START");
-	*isWriteProtected = true; // XXX
+	UTL_DEBUG_FUN("CALLED");
+	*isWriteProtected = !provider_->writeEnabled();
 	return kIOReturnSuccess;
 }
 
@@ -378,8 +378,8 @@ IOReturn SDDisk::doAsyncReadWrite(IOMemoryDescriptor *buffer,
 	if ((direction != kIODirectionIn) && (direction != kIODirectionOut))
 		return kIOReturnBadArgument;
 
-	if (direction == kIODirectionOut)
-		return kIOReturnNotWritable; // read-only driver for now...
+	if (!provider_->writeEnabled() && direction == kIODirectionOut)
+		return kIOReturnNotWritable; // read-only driver
 
 	if ((block + nblks) > num_blocks_)
 		return kIOReturnBadArgument;

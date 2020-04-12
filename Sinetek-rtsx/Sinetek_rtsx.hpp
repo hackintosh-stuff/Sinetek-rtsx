@@ -87,10 +87,12 @@ public:
 	IOWorkLoop *		task_loop_;
 #endif
 	IOTimerEventSource *	task_execute_one_;
+	bool			write_enabled_; /// true if write is enabled
 	void			task_add();
 	void			prepare_task_loop();
 	void			destroy_task_loop();
 	static void		task_execute_one_impl_(OSObject *, IOTimerEventSource *);
 
 	void cardEject();
+	bool writeEnabled();
 };

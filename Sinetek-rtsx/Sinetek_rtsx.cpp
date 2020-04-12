@@ -1,5 +1,7 @@
 #include "Sinetek_rtsx.hpp"
 
+#include <pexpert/pexpert.h> // PE_parse_boot_argn
+
 #include <IOKit/IOLib.h>
 #include <IOKit/pci/IOPCIDevice.h>
 #include <IOKit/IOTimerEventSource.h>
@@ -49,6 +51,11 @@ bool Sinetek_rtsx::init(OSDictionary *dictionary) {
 	if (!(rtsx_softc_original_ = UTL_MALLOC(struct rtsx_softc))) {
 		UTL_ERR("ERROR ALLOCATING MEMORY!");
 		return false;
+	}
+	uint32_t dummy;
+	write_enabled_ = PE_parse_boot_argn("-rtsx_rw", &dummy, sizeof(dummy));
+	if (write_enabled_) {
+		UTL_LOG("Writing is enabled");
 	}
 	UTL_DEBUG_FUN("END");
 	return true;
@@ -466,3 +473,8 @@ IOReturn Sinetek_rtsx::executeOneCommandGateAction(OSObject *obj,
 	UTL_DEBUG_DEF("EXECUTE ONE COMMANDGATEACTION RETURNING");
 }
 #endif // RTSX_USE_IOCOMMANDGATE
+
+bool Sinetek_rtsx::writeEnabled()
+{
+	return write_enabled_;
+}
