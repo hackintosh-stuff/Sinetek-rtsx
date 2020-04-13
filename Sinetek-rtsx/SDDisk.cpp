@@ -276,21 +276,19 @@ void read_task_impl_(void *_args)
 	UTL_CHK_PTR(args->that->provider_->rtsx_softc_original_->sdmmc,);
 	auto sdmmc = (struct sdmmc_softc *) args->that->provider_->rtsx_softc_original_->sdmmc;
 	UTL_CHK_PTR(sdmmc->sc_fn0,);
-	UTL_DEBUG_DEF("START (block = %u nblks = %u blksize = %u)",
-		  static_cast<unsigned>(args->block),
-		  static_cast<unsigned>(args->nblks),
-		  args->that->blk_size_);
-
-	printf("read_task_impl_  sz %llu\n", args->nblks * args->that->blk_size_);
-	printf("sf->csd.sector_size %d\n", sdmmc->sc_fn0->csd.sector_size);
-
+	UTL_DEBUG_FUN("START (%s block = %u nblks = %u blksize = %u physSectSize = %u)",
+		      args->direction == kIODirectionIn ? "READ" : "WRITE",
+		      static_cast<unsigned>(args->block),
+		      static_cast<unsigned>(args->nblks),
+		      args->that->blk_size_,
+		      sdmmc->sc_fn0->csd.sector_size);
 
 	actualByteCount = args->nblks * args->that->blk_size_;
 	IOByteCount maxSendBytes = 128 * 1024;
 	IOByteCount remainingBytes = args->nblks * 512;
 	IOByteCount sentBytes = 0;
 	int blocks = (int) args->block;
-	
+
 #if RTSX_USE_WRITEBYTES
 	u_char *buf = new u_char[actualByteCount];
 #else
@@ -300,66 +298,53 @@ void read_task_impl_(void *_args)
 
 	while (remainingBytes > 0) {
 		IOByteCount sendByteCount = remainingBytes > maxSendBytes ? maxSendBytes : remainingBytes;
-		
+
 		if (args->direction == kIODirectionIn) {
 			error = sdmmc_mem_read_block(sdmmc->sc_fn0, blocks, buf + sentBytes, sendByteCount);
-		}
-		else {
+			if (error)
+				break;
+#if RTSX_USE_WRITEBYTES
+			IOByteCount copied_bytes = args->buffer->writeBytes(sentBytes, buf, sendByteCount);
+			if (copied_bytes == 0) {
+				error = EIO;
+				break;
+			}
+#endif
+		} else {
 #if RTSX_USE_WRITEBYTES
 			IOByteCount copied_bytes = args->buffer->readBytes(sentBytes, buf, sendByteCount);
 			if (copied_bytes == 0) {
-				delete[] buf;
-				if (args->completion.action) {
-					(args->completion.action)(args->completion.target, args->completion.parameter, kIOReturnIOError, 0);
-				}
-				goto out;
+				error = EIO;
+				break;
 			}
 #endif
 			error = sdmmc_mem_write_block(sdmmc->sc_fn0, blocks, buf + sentBytes, sendByteCount);
+			if (error)
+				break;
 		}
-		if (error) {
-			if (args->completion.action) {
-				(args->completion.action)(args->completion.target, args->completion.parameter,
-							  kIOReturnIOError, 0);
-			} else {
-				UTL_ERR("No completion action!");
-			}
-			goto out;
-		}
-#if RTSX_USE_WRITEBYTES
-		IOByteCount copied_bytes = args->buffer->writeBytes(sentBytes, buf, sendByteCount);
-		if (copied_bytes == 0) {
-			delete[] buf;
-			if (args->completion.action) {
-				(args->completion.action)(args->completion.target, args->completion.parameter, kIOReturnIOError, 0);
-			}
-			goto out;
-		}
-#endif
 		blocks += (sendByteCount / 512);
 		remainingBytes -= sendByteCount;
 		sentBytes += sendByteCount;
 	}
-
 #if RTSX_USE_WRITEBYTES
 	delete[] buf;
 #else
 	map->release();
 #endif
 	if (args->completion.action) {
-		(args->completion.action)(args->completion.target, args->completion.parameter,
-					  kIOReturnSuccess, actualByteCount);
+		if (error == 0) {
+			(args->completion.action)(args->completion.target, args->completion.parameter,
+						  kIOReturnSuccess, actualByteCount);
+		} else {
+			UTL_ERR("Returning an IO Error! (error = %d)", error);
+			(args->completion.action)(args->completion.target, args->completion.parameter,
+						  kIOReturnIOError, 0);
+		}
 	} else {
 		UTL_ERR("No completion action!");
 	}
-
-out:
-	if (error) {
-		UTL_ERR("END (error = %d)", error);
-	} else {
-		UTL_DEBUG_DEF("END (error = %d)", error);
-	}
 	delete args;
+	UTL_DEBUG_FUN("END (error = %d)", error);
 }
 
 
