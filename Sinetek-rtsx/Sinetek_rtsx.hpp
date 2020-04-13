@@ -94,5 +94,6 @@ public:
 	static void		task_execute_one_impl_(OSObject *, IOTimerEventSource *);
 
 	void cardEject();
+	bool cardIsWriteProtected();
 	bool writeEnabled();
 };

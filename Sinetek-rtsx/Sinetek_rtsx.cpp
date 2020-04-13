@@ -474,6 +474,13 @@ IOReturn Sinetek_rtsx::executeOneCommandGateAction(OSObject *obj,
 }
 #endif // RTSX_USE_IOCOMMANDGATE
 
+bool Sinetek_rtsx::cardIsWriteProtected() {
+	auto bipr = ::bus_space_read_4(gBusSpaceTag,
+				       (bus_space_handle_t) memory_descriptor_, RTSX_BIPR);
+	return (bipr & RTSX_SD_WRITE_PROTECT) != 0;
+}
+
+
 bool Sinetek_rtsx::writeEnabled()
 {
 	return write_enabled_;

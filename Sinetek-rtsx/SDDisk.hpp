@@ -17,6 +17,7 @@ private:
 	IOLock *			util_lock_;
 	uint32_t			num_blocks_;
 	uint32_t			blk_size_;
+	bool				card_is_write_protected_;
 	sdmmc_softc			*sdmmc_softc_; // TODO: where is this initialized?
 
 public:

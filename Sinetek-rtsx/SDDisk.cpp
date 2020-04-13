@@ -33,6 +33,7 @@ bool SDDisk::init(struct sdmmc_softc *sc_sdmmc, OSDictionary* properties)
 		return false;
 
 	util_lock_ = NULL;
+	card_is_write_protected_ = true;
 	sdmmc_softc_ = sc_sdmmc;
 
 	UTL_DEBUG_FUN("END");
@@ -71,7 +72,10 @@ bool SDDisk::attach(IOService* provider)
 	printf("rtsx: attaching SDDisk, num_blocks:%d  blk_size:%d\n",
 	       num_blocks_, blk_size_);
 
-	UTL_LOG("SDDisk attached.");
+	// check whether the card is write-protected
+	card_is_write_protected_ = provider_->cardIsWriteProtected();
+
+	UTL_LOG("SDDisk attached%s", card_is_write_protected_ ? " (card is write-protected)" : "");
 	return true;
 }
 
@@ -228,7 +232,7 @@ IOReturn SDDisk::reportRemovability(bool *isRemovable)
 IOReturn SDDisk::reportWriteProtection(bool *isWriteProtected)
 {
 	UTL_DEBUG_FUN("CALLED");
-	*isWriteProtected = !provider_->writeEnabled();
+	*isWriteProtected = !provider_->writeEnabled() || card_is_write_protected_;
 	return kIOReturnSuccess;
 }
 
