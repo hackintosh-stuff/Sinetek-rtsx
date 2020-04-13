@@ -189,12 +189,8 @@ rtsx_attach(struct rtsx_softc *sc, bus_space_tag_t iot,
 	sc->dmat = dmat;
 	sc->flags = flags;
 
-	UTL_DEBUG_FUN("Calling rtsx_init...");
-	if (rtsx_init(sc, 1)) {
-		UTL_ERR("rtsx_init failed!");
+	if (rtsx_init(sc, 1))
 		return 1;
-	}
-	UTL_DEBUG_FUN("rtsx_init returned");
 
 	if (rtsx_read_cfg(sc, 0, RTSX_SDIOCFG_REG, &sdio_cfg) == 0) {
 		if ((sdio_cfg & RTSX_SDIOCFG_SDIO_ONLY) ||
@@ -261,7 +257,8 @@ destroy_cmd:
 	return 1;
 }
 
-#if DEBUG && RTSX_MIMIC_LINUX
+#if __APPLE__ && DEBUG && RTSX_MIMIC_LINUX
+// See: https://github.com/torvalds/linux/blob/master/drivers/misc/cardreader/rts5249.c
 static void rtsx_base_fetch_vendor_settings(struct rtsx_softc *pcr)
 {
 	int rtsx_read_cfg(struct rtsx_softc *sc, u_int8_t func, u_int16_t addr, u_int32_t *val);
@@ -314,7 +311,11 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 			sc->flags |= RTSX_F_5229_TYPE_C;
 			break;
 		default:
+#if __APPLE__
+			UTL_ERR("rtsx_init: unknown ic %02x\n", version);
+#else
 			printf("rtsx_init: unknown ic %02x\n", version);
+#endif
 			return (1);
 		}
 	}
@@ -356,7 +357,7 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 	/* XXX magic numbers from linux driver */
 	if (sc->flags & RTSX_F_5209)
 		error = rtsx_write_phy(sc, 0x00, 0xB966);
-#if RTSX_MIMIC_LINUX
+#if __APPLE__ && RTSX_MIMIC_LINUX
 	else if (sc->flags & RTSX_F_525A) {
 		// optimize_phy
 		RTSX_CLR(sc, 0xff7e, 0x10);
@@ -373,7 +374,11 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 	else
 		error = rtsx_write_phy(sc, 0x00, 0xBA42);
 	if (error) {
+#if __APPLE__
+		UTL_ERR("%s: cannot write phy register\n", DEVNAME(sc));
+#else
 		printf("%s: cannot write phy register\n", DEVNAME(sc));
+#endif
 		return (1);
 	}
 
@@ -386,6 +391,7 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 	/* Disable card clock. */
 	RTSX_CLR(sc, RTSX_CARD_CLK_EN, RTSX_CARD_CLK_EN_ALL);
 
+#if __APPLE__
 #if RTSX_MIMIC_LINUX
 	RTSX_CLR(sc, RTSX_CHANGE_LINK_STATE,
 	    RTSX_FORCE_RST_CORE_EN | RTSX_NON_STICKY_RST_N_DBG /* | 0x04 MIMMIC LINUX */);
@@ -400,15 +406,18 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 	    RTSX_FORCE_RST_CORE_EN | RTSX_NON_STICKY_RST_N_DBG | 0x04);
 	RTSX_WRITE(sc, RTSX_SD30_DRIVE_SEL, RTSX_SD30_DRIVE_SEL_3V3);
 #endif
+#endif
 
 	/* Enable SSC clock. */
 	RTSX_WRITE(sc, RTSX_SSC_CTL1, RTSX_SSC_8X_EN | RTSX_SSC_SEL_4M);
 	RTSX_WRITE(sc, RTSX_SSC_CTL2, 0x12);
 
+#if __APPLE__
 #if RTSX_MIMIC_LINUX
 	UTL_CHK_SUCCESS(rtsx_write(sc, RTSX_CHANGE_LINK_STATE, 0x16, 0x10));
 #else
 	RTSX_SET(sc, RTSX_CHANGE_LINK_STATE, RTSX_MAC_PHY_RST_N_DBG);
+#endif
 #endif
 	RTSX_SET(sc, RTSX_IRQSTAT0, RTSX_LINK_READY_INT);
 
@@ -417,7 +426,6 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 	/* Set RC oscillator to 400K. */
 	RTSX_CLR(sc, RTSX_RCCTL, RTSX_RCCTL_F_2M);
 
-	// cholonam: In linux this is done in rts5249_extra_init_hw
 	/* Request clock by driving CLKREQ pin to zero. */
 	RTSX_SET(sc, RTSX_PETXCFG, RTSX_PETXCFG_CLKREQ_PIN);
 
@@ -433,8 +441,8 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 		/* Set default OLT blink period. */
 		RTSX_SET(sc, RTSX_OLT_LED_CTL, RTSX_OLT_LED_PERIOD);
 	}
-	
-#if RTSX_MIMIC_LINUX
+
+#if __APPLE__ && RTSX_MIMIC_LINUX
 	// extra_init_hw
 
 	/* Rest L1SUB Config */
@@ -448,12 +456,12 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 	UTL_CHK_SUCCESS(rtsx_write(sc, RTSX_LDO_PWR_SEL, 0x03, 0x01));
 	/* LED shine disabled, set initial shine cycle period */
 	UTL_CHK_SUCCESS(rtsx_write(sc, RTSX_OLT_LED_CTL, 0x0F, 0x02));
-	
+
 	// configure driving (for me, drive_sel = 3)
 	RTSX_WRITE(sc, 0xfd5a, 0x96); // SD30_CLK_DRIVE_SEL
 	RTSX_WRITE(sc, 0xfd5e, 0x96); // SD30_CMD_DRIVE_SEL
 	RTSX_WRITE(sc, 0xfd5f, 0x96); // SD30_DAT_DRIVE_SEL
-	
+
 	{
 		int rtsx_read_cfg(struct rtsx_softc *sc, u_int8_t func, u_int16_t addr, u_int32_t *val);
 		u_int32_t val;
@@ -464,7 +472,7 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 		}
 		sc->flags |= RTSX_F_FORCE_CLKREQ_0; // TODO: check this...
 	}
-	
+
 	if (sc->flags & RTSX_F_REVERSE_SOCKET) {
 		UTL_LOG("Reverse socket found");
 		UTL_CHK_SUCCESS(rtsx_write(sc, RTSX_PETXCFG, 0xb0, 0xb0));
@@ -923,25 +931,19 @@ rtsx_write(struct rtsx_softc *sc, u_int16_t addr, u_int8_t mask, u_int8_t val)
 	while (tries--) {
 		reg = READ4(sc, RTSX_HAIMR);
 		if (!(reg & RTSX_HAIMR_BUSY)) {
+#if __APPLE__
 			if (val != (reg & 0xff)) {
 				UTL_ERR("Returning EIO (addr=0x%04x mask=0x%02x val=0x%02x)!", addr, mask, val);
 				return EIO;
 			}
-#if __APPLE__ && DEBUG
-			if (addr != RTSX_PHY_DATA0 &&
-			    addr != RTSX_PHY_DATA1 &&
-			    addr != RTSX_PHY_ADDR &&
-			    addr != RTSX_PHY_RWCTL) { // log only if not phy-related
-				UTL_DEBUG_CMD("RTSX_WRITE: addr: 0x%04x mask: 0x%02x val: 0x%02x (tries: %d)", addr,
-					      mask, val, 1024 - tries);
-			}
+#else
+			if (val != (reg & 0xff))
+				return EIO;
 #endif
 			return 0;
 		}
 	}
 
-	UTL_DEBUG_CMD("RTSX_WRITE: addr: 0x%04x mask: 0x%02x val: 0x%02x (tries: %d)", addr, mask, val, 1024 - tries);
-	UTL_ERR("Returning ETIMEDOUT (addr=0x%04x mask=0x%02x val=0x%02x)!", addr, mask, val);
 	return ETIMEDOUT;
 }
 
@@ -990,9 +992,6 @@ rtsx_write_phy(struct rtsx_softc *sc, u_int8_t addr, u_int16_t val)
 		if (!(rwctl & RTSX_PHY_BUSY))
 			break;
 	}
-
-	UTL_DEBUG_CMD("RSTX_WRITE_PHY: addr: 0x%02x val: 0x%04x (tries: %d)", (int) addr, (int) val,
-		      100000 - timeout );
 	
 	if (timeout == 0)
 		return ETIMEDOUT;
@@ -1017,10 +1016,8 @@ rtsx_read_cfg(struct rtsx_softc *sc, u_int8_t func, u_int16_t addr,
 			break;
 	}
 
-	if (tries == 0) {
-		UTL_ERR("Returning EIO!");
+	if (tries == 0)
 		return EIO;
-	}
 	
 	RTSX_READ(sc, RTSX_CFGDATA0, &data0);
 	RTSX_READ(sc, RTSX_CFGDATA1, &data1);
@@ -1172,7 +1169,6 @@ rtsx_hostcmd_send(struct rtsx_softc *sc, int ncmd)
 
 	/* Tell the chip where the command buffer is and run the commands. */
 	WRITE4(sc, RTSX_HCBAR, sc->dmap_cmd->dm_segs[0].ds_addr);
-	// UTL_DEBUG_DEF("Run the commands!");
 	WRITE4(sc, RTSX_HCBCTLR,
 	    ((ncmd * 4) & 0x00ffffff) | RTSX_START_CMD | RTSX_HW_AUTO_RSP);
 
@@ -1502,17 +1498,9 @@ rtsx_exec_command(sdmmc_chipset_handle_t sch, struct sdmmc_command *cmd)
 	    BUS_DMASYNC_PREWRITE);
 
 	/* Run the command queue and wait for completion. */
-	UTL_DEBUG(1, "Executing cmd %d (%s) (sending %d commands) and waiting...",
-		  cmd->c_opcode,
-		  mmcCmd2str(cmd->c_opcode), ncmd);
 	error = rtsx_hostcmd_send(sc, ncmd);
-	// cholonam: Beware that there must be no debug messages here, otherwise the interrupt (and the wakeup()
-	// it does) will arrive before rtsx_wait_intr and we'll miss it.
-	if (error == 0) {
+	if (error == 0)
 		error = rtsx_wait_intr(sc, RTSX_TRANS_OK_INT, 1);
-		if (error) UTL_ERR("Executing sdmmc cmd %d: rtsx_wait_intr returned error %d%s", cmd->c_opcode,
-				   error, error == 60 ? " (Timeout)" : "");
-	}
 	if (error)
 		goto unload_cmdbuf;
 
@@ -1567,11 +1555,8 @@ rtsx_soft_reset(struct rtsx_softc *sc)
 	/* Stop command transfer. */
 	WRITE4(sc, RTSX_HCBCTLR, RTSX_STOP_CMD);
 
-#if !__APPLE__ || !RTSX_MIMIC_LINUX
-	// linux does not do this...
 	(void)rtsx_write(sc, RTSX_CARD_STOP, RTSX_SD_STOP|RTSX_SD_CLR_ERR,
 		    RTSX_SD_STOP|RTSX_SD_CLR_ERR);
-#endif
 
 	/* Stop DMA transfer. */
 	WRITE4(sc, RTSX_HDBCTLR, RTSX_STOP_DMA);
@@ -1580,8 +1565,6 @@ rtsx_soft_reset(struct rtsx_softc *sc)
 	(void)rtsx_write(sc, RTSX_RBCTL, RTSX_RB_FLUSH, RTSX_RB_FLUSH);
 }
 
-// cholonam: Beware that there must be no debug messages in this method until the tsleep(), otherwise the interrupt
-// (and the wakeup() it does) will arrive before the tsleep and we'll miss it.
 int
 rtsx_wait_intr(struct rtsx_softc *sc, int mask, int secs)
 {
@@ -1659,8 +1642,9 @@ rtsx_intr(void *arg)
 	/* Ack interrupts. */
 	WRITE4(sc, RTSX_BIPR, status);
 
+#if __APPLE__
 	// Log interrupt
-	//if (status && status != RTSX_SD_EXIST && status != 0xffffffff) {
+	if (status && status != RTSX_SD_EXIST && status != 0xffffffff) {
 		UTL_DEBUG_INT("%s: INTERRUPT: STATUS = 0x%08x ENABLED = 0x%08x%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n",
 			    DEVNAME(sc), status, enabled,
 			    (status & RTSX_TRANS_OK_INT) ? " (TRANS OK)" : "",
@@ -1679,7 +1663,8 @@ rtsx_intr(void *arg)
 			    (status & RTSX_XD_EXIST) ? " XD_EXIST" : "",
 			    (status & RTSX_MS_EXIST) ? " MS_EXIST" : "",
 			    (status & RTSX_SD_EXIST) ? " SD_EXIST" : "");
-	//}
+	}
+#endif
 
 	if (((enabled & status) == 0) || status == 0xffffffff)
 		return 0;
@@ -1694,15 +1679,7 @@ rtsx_intr(void *arg)
 	}
 
 	if (status & (RTSX_TRANS_OK_INT | RTSX_TRANS_FAIL_INT)) {
-		UTL_DEBUG_INT("Intr -> Status received:%s%s",
-			      (status & RTSX_TRANS_OK_INT) ? " OK" : "",
-			      (status & RTSX_TRANS_FAIL_INT) ? " FAIL" : "");
 		sc->intr_status |= status;
-#if UTL_LOG_DELAY_MS > 0
-		// Sleep a bit to prevent wakeup being called before the tsleep
-		// TODO: Maybe we don't need to sleep because the client will not wait if intr_status is already set
-		IOSleep((UTL_LOG_DELAY_MS) * 8); // sleep a bit...
-#endif
 		wakeup(&sc->intr_status);
 	}
 

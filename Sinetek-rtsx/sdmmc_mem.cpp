@@ -147,7 +147,6 @@ sdmmc_mem_enable(struct sdmmc_softc *sc)
 void
 sdmmc_mem_scan(struct sdmmc_softc *sc)
 {
-	UTL_DEBUG_FUN("START");
 	struct sdmmc_command cmd;
 	struct sdmmc_function *sf;
 	u_int16_t next_rca;
@@ -171,7 +170,6 @@ sdmmc_mem_scan(struct sdmmc_softc *sc)
 		error = sdmmc_mmc_command(sc, &cmd);
 		if (error == ETIMEDOUT) {
 			/* No more cards there. */
-			UTL_DEBUG_DEF("NO MORE CARDS! (i = %d)", i);
 			break;
 		} else if (error != 0) {
 			DPRINTF(("%s: can't read CID\n", DEVNAME(sc)));
@@ -253,7 +251,6 @@ sdmmc_mem_scan(struct sdmmc_softc *sc)
 		sdmmc_print_cid(&sf->cid);
 #endif
 	}
-	UTL_DEBUG_FUN("END");
 }
 
 int
@@ -414,11 +411,15 @@ sdmmc_mem_decode_scr(struct sdmmc_softc *sc, uint32_t *raw_scr,
 	    ver, sf->scr.sd_spec, sf->scr.bus_width));
 
 	if (ver != 0) {
+#if __APPLE__
+		/* this should be an error */
 		UTL_ERR("%s: unknown SCR structure version: %d\n",
 		    DEVNAME(sc), ver);
+#else
+		DPRINTF(("%s: unknown SCR structure version: %d\n",
+		    DEVNAME(sc), ver));
+#endif
 		return EINVAL;
-	} else {
-		UTL_LOG("SCR structure version 0 (GOOD!)");
 	}
 	return 0;
 }
@@ -621,10 +622,15 @@ sdmmc_mem_sd_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 		return error;
 	}
 	error = sdmmc_mem_decode_scr(sc, raw_scr, sf);
+#if __APPLE__
 	if (error) {
 		UTL_ERR("DECODE SCR FAILED!");
 		return error;
 	}
+#else
+	if (error)
+		return error;
+#endif
 
 	if (ISSET(sc->sc_caps, SMC_CAPS_4BIT_MODE) &&
 	    ISSET(sf->scr.bus_width, SCR_SD_BUS_WIDTHS_4BIT)) {

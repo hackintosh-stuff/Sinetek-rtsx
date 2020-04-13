@@ -137,7 +137,6 @@ sdmmc_io_enable(struct sdmmc_softc *sc)
 void
 sdmmc_io_scan(struct sdmmc_softc *sc)
 {
-	UTL_DEBUG_FUN("START");
 	struct sdmmc_function *sf0, *sf;
 	int i;
 
@@ -161,7 +160,6 @@ sdmmc_io_scan(struct sdmmc_softc *sc)
 		return;
 	}
 
-	UTL_DEBUG_DEF("Function count: %d", sc->sc_function_count);
 	for (i = 1; i <= sc->sc_function_count; i++) {
 		sf = sdmmc_function_alloc(sc);
 		sf->number = i;
@@ -170,7 +168,6 @@ sdmmc_io_scan(struct sdmmc_softc *sc)
 
 		SIMPLEQ_INSERT_TAIL(&sc->sf_head, sf, sf_list);
 	}
-	UTL_DEBUG_FUN("END");
 }
 
 /*
@@ -285,8 +282,6 @@ sdmmc_io_attach(struct sdmmc_softc *sc)
 	struct sdmmc_function *sf;
 	struct sdmmc_attach_args saa;
 
-	UTL_ERR("START (if this function is called, we need to implement a more intelligent config_found_sm...)");
-
 	rw_assert_wrlock(&sc->sc_lock);
 
 	SIMPLEQ_FOREACH(sf, &sc->sf_head, sf_list) {
@@ -299,7 +294,6 @@ sdmmc_io_attach(struct sdmmc_softc *sc)
 		sf->child = config_found_sm(&sc->sc_dev, &saa, sdmmc_print,
 		    sdmmc_submatch);
 	}
-	UTL_DEBUG_FUN("END");
 }
 
 int
@@ -392,7 +386,6 @@ sdmmc_io_rw_direct(struct sdmmc_softc *sc, struct sdmmc_function *sf,
 	/* Make sure the card is selected. */
 	if ((error = sdmmc_select_card(sc, sf)) != 0) {
 		rw_exit(&sc->sc_lock);
-		UTL_ERR("Failed to select card while reading reg %d of function %d (error %d)", reg, sf ? sf->number : 0, error);
 		return error;
 	}
 
@@ -411,7 +404,6 @@ sdmmc_io_rw_direct(struct sdmmc_softc *sc, struct sdmmc_function *sf,
 	error = sdmmc_mmc_command(sc, &cmd);
 	*datap = SD_R5_DATA(cmd.c_resp);
 
-	if (error) UTL_ERR("Failed to read reg %d of function %d (error %d)", reg, sf ? sf->number : 0, error);
 	return error;
 }
 

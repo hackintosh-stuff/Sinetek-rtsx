@@ -69,7 +69,7 @@ int	sdmmc_ioctl(struct device *, u_long, caddr_t);
 #endif
 
 #ifdef SDMMC_DEBUG
-int sdmmcdebug = 1;
+int sdmmcdebug = 0;
 extern int sdhcdebug;	/* XXX should have a sdmmc_chip_debug() function */
 void sdmmc_dump_command(struct sdmmc_softc *, struct sdmmc_command *);
 #define DPRINTF(n,s)	do { if ((n) <= sdmmcdebug) printf s; } while (0)
@@ -96,12 +96,6 @@ sdmmc_match(struct device *parent, void *match, void *aux)
 	struct cfdata *cf = match;
 	struct sdmmcbus_attach_args *saa = aux;
 #endif
-
-	UTL_CHK_PTR(saa, 0);
-	UTL_CHK_PTR(saa->saa_busname, 0);
-	UTL_CHK_PTR(cf, 0);
-	UTL_CHK_PTR(cf->cf_driver, 0);
-	UTL_CHK_PTR(cf->cf_driver->cd_name, 0);
 
 	return strcmp(saa->saa_busname, cf->cf_driver->cd_name) == 0;
 }
@@ -176,23 +170,18 @@ sdmmc_attach(struct device *parent, struct device *self, void *aux)
 int
 sdmmc_detach(struct device *self, int flags)
 {
-	UTL_DEBUG_FUN("START");
 	struct sdmmc_softc *sc = (struct sdmmc_softc *)self;
 
 	sc->sc_dying = 1;
 	while (sc->sc_task_thread != NULL) {
-		UTL_DEBUG_LOOP("Waking up worker...");
 		wakeup(&sc->sc_tskq);
 		// cholonam: can't log here or will miss the wakeup()
 		tsleep_nsec(sc, PWAIT, "mmcdie", INFSLP);
-		UTL_DEBUG_LOOP("Done?");
 	}
-	UTL_DEBUG_LOOP("Done!");
 
 	if (sc->sc_dmap)
 		bus_dmamap_destroy(sc->sc_dmat, sc->sc_dmap);
 
-	UTL_DEBUG_FUN("END");
 	return 0;
 }
 
@@ -248,7 +237,6 @@ sdmmc_task_thread(void *arg)
 	int s;
 
 restart:
-	UTL_DEBUG_FUN("Calling sdmmc_needs_discover...");
 	sdmmc_needs_discover(&sc->sc_dev);
 
 	s = splsdmmc();
@@ -256,26 +244,18 @@ restart:
 		for (task = TAILQ_FIRST(&sc->sc_tskq); task != NULL;
 		     task = TAILQ_FIRST(&sc->sc_tskq)) {
 			splx(s);
-			UTL_DEBUG_LOOP("Calling sdmmc_del_task...");
 			sdmmc_del_task(task);
-			UTL_DEBUG_LOOP("Calling func...");
 			task->func(task->arg);
-			UTL_DEBUG_LOOP("func returns");
 			s = splsdmmc();
 		}
 		tsleep_nsec(&sc->sc_tskq, PWAIT, "mmctsk", INFSLP);
 	}
 	splx(s);
 
-	UTL_DEBUG_DEF("sdmmc is dying (%d)...", sc->sc_dying);
-
 	if (ISSET(sc->sc_flags, SMF_CARD_PRESENT)) {
-		UTL_DEBUG_DEF("Card present. Detaching...");
 		rw_enter_write(&sc->sc_lock);
 		sdmmc_card_detach(sc, DETACH_FORCE);
 		rw_exit(&sc->sc_lock);
-	} else {
-		UTL_DEBUG_DEF("Card not present. Not detaching.");
 	}
 
 	/*
@@ -289,7 +269,6 @@ restart:
 	}
 	sc->sc_task_thread = NULL;
 	wakeup(sc);
-	UTL_DEBUG_DEF("sdmmc_task_thread exitting...");
 	kthread_exit(0);
 }
 
@@ -613,24 +592,10 @@ sdmmc_init(struct sdmmc_softc *sc)
 	}
 
 	/* Any good functions left after initialization? */
-#if __APPLE__
-	int found = 0;
-	SIMPLEQ_FOREACH(sf, &sc->sf_head, sf_list) {
-		if (!ISSET(sf->flags, SFF_ERROR))
-			found++;//return 0;
-	}
-	if (found > 0) {
-		UTL_DEBUG_DEF("%d functions were found", found);
-	} else {
-		UTL_ERR("No functions were found");
-	}
-	if (found) return 0;
-#else
 	SIMPLEQ_FOREACH(sf, &sc->sf_head, sf_list) {
 		if (!ISSET(sf->flags, SFF_ERROR))
 			return 0;
 	}
-#endif
 	/* No, we should probably power down the card. */
 	return 1;
 }
@@ -893,6 +858,7 @@ sdmmc_dump_command(struct sdmmc_softc *sc, struct sdmmc_command *cmd)
 
 	rw_assert_wrlock(&sc->sc_lock);
 
+#if __APPLE__
 	if (cmd->c_error) {
 		UTL_ERR("%s: cmd %u (%s) arg=%#x data=%p dlen=%d flags=%#x proc=\"%s\" "
 			"(error %d)\n", DEVNAME(sc), cmd->c_opcode, mmcCmd2str(cmd->c_opcode),
@@ -902,19 +868,23 @@ sdmmc_dump_command(struct sdmmc_softc *sc, struct sdmmc_command *cmd)
 			      "(error %d)\n", DEVNAME(sc), cmd->c_opcode, mmcCmd2str(cmd->c_opcode),
 			      cmd->c_arg, cmd->c_data, cmd->c_datalen, cmd->c_flags, "", cmd->c_error);
 	}
+#else
+	DPRINTF(1,("%s: cmd %u arg=%#x data=%p dlen=%d flags=%#x "
+	    "proc=\"%s\" (error %d)\n", DEVNAME(sc), cmd->c_opcode,
+	    cmd->c_arg, cmd->c_data, cmd->c_datalen, cmd->c_flags,
+	    curproc ? curproc->p_p->ps_comm : "", cmd->c_error));
+#endif
 
 	if (cmd->c_error || sdmmcdebug < 1)
 		return;
 
-	char buf[100] = { 0 }; size_t bi;
-
-	bi = scnprintf(buf, 100, "%s: resp=", DEVNAME(sc));
+	printf("%s: resp=", DEVNAME(sc));
 	if (ISSET(cmd->c_flags, SCF_RSP_136))
 		for (i = 0; i < sizeof cmd->c_resp; i++)
-			bi += scnprintf(buf + bi, 100 - bi, "%02x ", ((u_char *)cmd->c_resp)[i]);
+			printf("%02x ", ((u_char *)cmd->c_resp)[i]);
 	else if (ISSET(cmd->c_flags, SCF_RSP_PRESENT))
 		for (i = 0; i < 4; i++)
-			bi += scnprintf(buf + bi, 100 - bi, "%02x ", ((u_char *)cmd->c_resp)[i]);
-	UTL_DEBUG_CMD("%s\n", buf);
+			printf("%02x ", ((u_char *)cmd->c_resp)[i]);
+	printf("\n");
 }
 #endif
