@@ -242,7 +242,7 @@ bus_dmamem_alloc(bus_dma_tag_t tag, bus_size_t size, bus_size_t alignment, bus_s
 
 	// call prepare here? does this wire the pages?
 	if (UTL_CHK_SUCCESS(memDesc->prepare(kIODirectionNone))) { // kIODirectionNone use descriptor's direction
-		// TODO: Free resources?
+		UTL_SAFE_RELEASE_NULL(memDesc);
 		return ENOMEM;
 	}
 
