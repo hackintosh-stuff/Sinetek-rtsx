@@ -282,44 +282,37 @@ void read_task_impl_(void *_args)
 
 
 	actualByteCount = args->nblks * args->that->blk_size_;
+	IOByteCount maxSendBytes = 128 * 1024;
+	IOByteCount remainingBytes = args->nblks * 512;
+	IOByteCount sentBytes = 0;
+	int blocks = (int) args->block;
+	
 #if RTSX_USE_WRITEBYTES
-	u_char buf[512];
+	u_char *buf = new u_char[actualByteCount];
 #else
-	{ auto map = args->buffer->map();
-		// this is for 32-bit?? u_char * buf = (u_char *) map->getVirtualAddress();
-		u_char *buf = (u_char *) map->getAddress();
-
-		for (UInt64 b = 0; b < args->nblks; ++b)
-		{
-			//		sdmmc_mem_single_read_block(args->that->provider_->sc_fn0,
-			//						    0, buf + b * 512, 512);
-			sdmmc_mem_read_block_subr(args->that->provider_->sc_fn0,
-						  0, buf, 512);
-			//		sdmmc_go_idle_state(args->that->provider_);
-		}
-		map->release(); } // need to release map
+	auto map = args->buffer->map();
+	u_char *buf = (u_char *) map->getAddress();
 #endif
 
-	for (UInt64 b = 0; b < args->nblks; b++)
-	{
-		printf("would: %lld  last block %d\n", args->block + b, args->that->num_blocks_ - 1);
-		//unsigned int would = args->block + b;
-#if RTSX_USE_WRITEBYTES
-		// This is a safer version
-		error = sdmmc_mem_read_block(sdmmc->sc_fn0,
-					     static_cast<int>(args->block + b),
-					     buf, 512);
-		if (!error) {
-			args->buffer->writeBytes(b * 512, buf, 512);
-		} else {
-			UTL_ERR("ERROR READING BLOCK (blockNo=%d error=%d)", static_cast<int>(args->block + b), error);
+	while (remainingBytes > 0) {
+		IOByteCount sendByteCount = remainingBytes > maxSendBytes ? maxSendBytes : remainingBytes;
+		
+		if (args->direction == kIODirectionIn) {
+			error = sdmmc_mem_read_block(sdmmc->sc_fn0, blocks, buf + sentBytes, sendByteCount);
 		}
-#else
-		auto would = args->block + b;
-		//if ( would > 60751872 ) would = 60751871;
-		error = sdmmc_mem_read_block_subr(args->that->provider_->sc_fn0,
-						  static_cast<int>(would), buf + b * 512, 512);
+		else {
+#if RTSX_USE_WRITEBYTES
+			IOByteCount copied_bytes = args->buffer->readBytes(sentBytes, buf, sendByteCount);
+			if (copied_bytes == 0) {
+				delete[] buf;
+				if (args->completion.action) {
+					(args->completion.action)(args->completion.target, args->completion.parameter, kIOReturnIOError, 0);
+				}
+				goto out;
+			}
 #endif
+			error = sdmmc_mem_write_block(sdmmc->sc_fn0, blocks, buf + sentBytes, sendByteCount);
+		}
 		if (error) {
 			if (args->completion.action) {
 				(args->completion.action)(args->completion.target, args->completion.parameter,
@@ -329,8 +322,26 @@ void read_task_impl_(void *_args)
 			}
 			goto out;
 		}
+#if RTSX_USE_WRITEBYTES
+		IOByteCount copied_bytes = args->buffer->writeBytes(sentBytes, buf, sendByteCount);
+		if (copied_bytes == 0) {
+			delete[] buf;
+			if (args->completion.action) {
+				(args->completion.action)(args->completion.target, args->completion.parameter, kIOReturnIOError, 0);
+			}
+			goto out;
+		}
+#endif
+		blocks += (sendByteCount / 512);
+		remainingBytes -= sendByteCount;
+		sentBytes += sendByteCount;
 	}
 
+#if RTSX_USE_WRITEBYTES
+	delete[] buf;
+#else
+	map->release();
+#endif
 	if (args->completion.action) {
 		(args->completion.action)(args->completion.target, args->completion.parameter,
 					  kIOReturnSuccess, actualByteCount);
@@ -346,6 +357,7 @@ out:
 	}
 	delete args;
 }
+
 
 /**
  * Start an async read or write operation.
