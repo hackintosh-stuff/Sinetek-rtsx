@@ -1578,7 +1578,15 @@ rtsx_wait_intr(struct rtsx_softc *sc, int mask, int secs)
 	status = sc->intr_status & mask;
 	while (status == 0) {
 		if (tsleep_nsec(&sc->intr_status, PRIBIO, "rtsxintr",
+#if __APPLE__ && RTSX_MIMIC_LINUX
+			/* Whenever OpenBSD is waiting 1 sec, the Linux driver only waits for 100 ms. Some commands
+			   have to result in a timeout error, which makes card mounting slower than it should be.
+			   Hence, we use 100 ms whenever 1 sec is received as timeout. */
+		    secs == 1 ? 100000000 : SEC_TO_NSEC(secs)) == EWOULDBLOCK) {
+#else
+		}
 		    SEC_TO_NSEC(secs)) == EWOULDBLOCK) {
+#endif
 			rtsx_soft_reset(sc);
 			error = ETIMEDOUT;
 			break;
