@@ -395,7 +395,9 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 #if RTSX_MIMIC_LINUX
 	RTSX_CLR(sc, RTSX_CHANGE_LINK_STATE,
 	    RTSX_FORCE_RST_CORE_EN | RTSX_NON_STICKY_RST_N_DBG /* | 0x04 MIMMIC LINUX */);
-	RTSX_WRITE(sc, 0xFD53, 0x21); // MS_DRIVE_8mA|GPIO_DRIVE_8mA
+	if (sc->flags & (RTSX_F_5229 | RTSX_F_525A)) {
+		RTSX_WRITE(sc, 0xFD53 /* CARD_DRIVE_SEL */, 0x21); // MS_DRIVE_8mA|GPIO_DRIVE_8mA
+	}
 
 #if DEBUG
 	// only for debugging purposes
@@ -443,6 +445,10 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 	}
 
 #if __APPLE__ && RTSX_MIMIC_LINUX
+	// try not affect other chips...
+	if ((sc->flags & RTSX_F_525A) == 0)
+		return 0;
+
 	// extra_init_hw
 
 	/* Rest L1SUB Config */
