@@ -1,4 +1,4 @@
-/*	$OpenBSD: sdmmcvar.h,v 1.26 2016/05/05 11:01:08 kettenis Exp $	*/
+/*	$OpenBSD: sdmmcvar.h,v 1.32 2019/04/02 07:08:40 stsp Exp $	*/
 
 /*
  * Copyright (c) 2006 Uwe Stuehler <uwe@openbsd.org>
@@ -19,19 +19,20 @@
 #ifndef _SDMMCVAR_H_
 #define _SDMMCVAR_H_
 
+#if __APPLE__
+#include "openbsd_compat.h"
+#else
 #include <sys/queue.h>
+#include <sys/rwlock.h>
 
-#include "sdmmcchip.h"
-#include "sdmmcreg.h"
+#include <machine/bus.h>
 
-#define sdmmc_softc rtsx_softc
+#include <scsi/scsi_all.h>
+#include <scsi/scsiconf.h>
 
-extern char * DEVNAME(struct sdmmc_softc *);
-
-#define DETACH_FORCE	0x01		/* force detachment; hardware gone */
-#define SET(t, f)	((t) |= (f))
-#define ISSET(t, f)	((t) & (f))
-#define	CLR(t, f)	((t) &= ~(f))
+#include <dev/sdmmc/sdmmcchip.h>
+#include <dev/sdmmc/sdmmcreg.h>
+#endif // __APPLE__
 
 struct sdmmc_csd {
 	int	csdver;		/* CSD structure format */
@@ -83,7 +84,7 @@ struct sdmmc_command {
 	u_int16_t	 c_opcode;	/* SD or MMC command index */
 	u_int32_t	 c_arg;		/* SD/MMC command argument */
 	sdmmc_response	 c_resp;	/* response buffer */
-//	bus_dmamap_t	 c_dmamap;
+	bus_dmamap_t	 c_dmamap;
 	void		*c_data;	/* buffer to send or read into */
 	int		 c_datalen;	/* length of data buffer */
 	int		 c_blklen;	/* block length */
@@ -149,11 +150,13 @@ struct sdmmc_function {
 	int flags;
 #define SFF_ERROR		0x0001	/* function is poo; ignore it */
 #define SFF_SDHC		0x0002	/* SD High Capacity card */
-	STAILQ_ENTRY(sdmmc_function) sf_list;
+	void *cookie;			/* pass extra info from bus to dev */
+	SIMPLEQ_ENTRY(sdmmc_function) sf_list;
 	/* SD card I/O function members */
 	int number;			/* I/O function number or -1 */
 	struct device *child;		/* function driver */
 	struct sdmmc_cis cis;		/* decoded CIS */
+	unsigned int cur_blklen;	/* current block length */
 	/* SD/MMC memory card members */
 	struct sdmmc_csd csd;		/* decoded CSD value */
 	struct sdmmc_cid cid;		/* decoded CID value */
@@ -164,21 +167,75 @@ struct sdmmc_function {
 /*
  * Structure describing a single SD/MMC/SDIO card slot.
  */
-// XXX
+struct sdmmc_softc {
+	struct device sc_dev;		/* base device */
+#define DEVNAME(sc)	((sc)->sc_dev.dv_xname)
+	sdmmc_chipset_tag_t sct;	/* host controller chipset tag */
+	sdmmc_chipset_handle_t sch;	/* host controller chipset handle */
+
+	bus_dma_tag_t sc_dmat;
+	bus_dmamap_t sc_dmap;
+#define SDMMC_MAXNSEGS	((MAXPHYS / PAGE_SIZE) + 1)
+
+	int sc_flags;
+#define SMF_SD_MODE		0x0001	/* host in SD mode (MMC otherwise) */
+#define SMF_IO_MODE		0x0002	/* host in I/O mode (SD mode only) */
+#define SMF_MEM_MODE		0x0004	/* host in memory mode (SD or MMC) */
+#define SMF_CARD_PRESENT	0x0010	/* card presence noticed */
+#define SMF_CARD_ATTACHED	0x0020	/* card driver(s) attached */
+#define	SMF_STOP_AFTER_MULTIPLE	0x0040	/* send a stop after a multiple cmd */
+#define SMF_CONFIG_PENDING	0x0080	/* config_pending_incr() called */
+
+	uint32_t sc_caps;		/* host capability */
+#define SMC_CAPS_AUTO_STOP	0x0001	/* send CMD12 automagically by host */
+#define SMC_CAPS_4BIT_MODE	0x0002	/* 4-bits data bus width */
+#define SMC_CAPS_DMA		0x0004	/* DMA transfer */
+#define SMC_CAPS_SPI_MODE	0x0008	/* SPI mode */
+#define SMC_CAPS_POLL_CARD_DET	0x0010	/* Polling card detect */
+#define SMC_CAPS_SINGLE_ONLY	0x0020	/* only single read/write */
+#define SMC_CAPS_8BIT_MODE	0x0040	/* 8-bits data bus width */
+#define SMC_CAPS_MULTI_SEG_DMA	0x0080	/* multiple segment DMA transfer */
+#define SMC_CAPS_SD_HIGHSPEED	0x0100	/* SD high-speed timing */
+#define SMC_CAPS_MMC_HIGHSPEED	0x0200	/* MMC high-speed timing */
+#define SMC_CAPS_UHS_SDR50	0x0400	/* UHS SDR50 timing */
+#define SMC_CAPS_UHS_SDR104	0x0800	/* UHS SDR104 timing */
+#define SMC_CAPS_UHS_DDR50	0x1000	/* UHS DDR50 timing */
+#define SMC_CAPS_UHS_MASK	0x1c00
+#define SMC_CAPS_MMC_DDR52	0x2000  /* eMMC DDR52 timing */
+#define SMC_CAPS_MMC_HS200	0x4000	/* eMMC HS200 timing */
+#define SMC_CAPS_MMC_HS400	0x8000	/* eMMC HS400 timing */
+#define SMC_CAPS_NONREMOVABLE	0x10000	/* non-removable devices */
+
+	int sc_function_count;		/* number of I/O functions (SDIO) */
+	struct sdmmc_function *sc_card;	/* selected card */
+	struct sdmmc_function *sc_fn0;	/* function 0, the card itself */
+	SIMPLEQ_HEAD(, sdmmc_function) sf_head; /* list of card functions */
+	int sc_dying;			/* bus driver is shutting down */
+	struct proc *sc_task_thread;	/* asynchronous tasks */
+	TAILQ_HEAD(, sdmmc_task) sc_tskq;   /* task thread work queue */
+	struct sdmmc_task sc_discover_task; /* card attach/detach task */
+	struct sdmmc_task sc_intr_task;	/* card interrupt task */
+	struct rwlock sc_lock;		/* lock around host controller */
+	void *sc_scsibus;		/* SCSI bus emulation softc */
+	TAILQ_HEAD(, sdmmc_intr_handler) sc_intrq; /* interrupt handlers */
+	long sc_max_seg;		/* maximum segment size */
+	long sc_max_xfer;		/* maximum transfer size */
+	void *sc_cookies[SDMMC_MAX_FUNCTIONS]; /* pass extra info from bus to dev */
+};
 
 /*
  * Attach devices at the sdmmc bus.
  */
-//struct sdmmc_attach_args {
-//	struct scsi_link *scsi_link;	/* XXX */
-//	struct sdmmc_function *sf;
-//};
+struct sdmmc_attach_args {
+	struct scsi_link *scsi_link;	/* XXX */
+	struct sdmmc_function *sf;
+};
 
-//#define IPL_SDMMC	IPL_BIO
-//#define splsdmmc()	splbio()
-//
-//#define	SDMMC_ASSERT_LOCKED(sc) \
-//rw_assert_wrlock(&(sc)->sc_lock)
+#define IPL_SDMMC	IPL_BIO
+#define splsdmmc()	splbio()
+
+#define	SDMMC_ASSERT_LOCKED(sc) \
+	rw_assert_wrlock(&(sc)->sc_lock)
 
 void	sdmmc_add_task(struct sdmmc_softc *, struct sdmmc_task *);
 void	sdmmc_del_task(struct sdmmc_task *);
@@ -194,12 +251,12 @@ int	sdmmc_set_relative_addr(struct sdmmc_softc *,
 	    struct sdmmc_function *);
 int	sdmmc_send_if_cond(struct sdmmc_softc *, uint32_t);
 
-//void	sdmmc_intr_enable(struct sdmmc_function *);
-//void	sdmmc_intr_disable(struct sdmmc_function *);
-//void	*sdmmc_intr_establish(struct device *, int (*)(void *),
-//			      void *, const char *);
-//void	sdmmc_intr_disestablish(void *);
-//void	sdmmc_intr_task(void *);
+void	sdmmc_intr_enable(struct sdmmc_function *);
+void	sdmmc_intr_disable(struct sdmmc_function *);
+void	*sdmmc_intr_establish(struct device *, int (*)(void *),
+	    void *, const char *);
+void	sdmmc_intr_disestablish(void *);
+void	sdmmc_intr_task(void *);
 
 int	sdmmc_io_enable(struct sdmmc_softc *);
 void	sdmmc_io_scan(struct sdmmc_softc *);
@@ -210,13 +267,16 @@ u_int8_t sdmmc_io_read_1(struct sdmmc_function *, int);
 u_int16_t sdmmc_io_read_2(struct sdmmc_function *, int);
 u_int32_t sdmmc_io_read_4(struct sdmmc_function *, int);
 int	sdmmc_io_read_multi_1(struct sdmmc_function *, int, u_char *, int);
+int	sdmmc_io_read_region_1(struct sdmmc_function *, int, u_char *, int);
 void	sdmmc_io_write_1(struct sdmmc_function *, int, u_int8_t);
 void	sdmmc_io_write_2(struct sdmmc_function *, int, u_int16_t);
 void	sdmmc_io_write_4(struct sdmmc_function *, int, u_int32_t);
 int	sdmmc_io_write_multi_1(struct sdmmc_function *, int, u_char *, int);
+int	sdmmc_io_write_region_1(struct sdmmc_function *, int, u_char *, int);
 int	sdmmc_io_function_ready(struct sdmmc_function *);
 int	sdmmc_io_function_enable(struct sdmmc_function *);
 void	sdmmc_io_function_disable(struct sdmmc_function *);
+void	sdmmc_io_set_blocklen(struct sdmmc_function *, unsigned int);
 
 int	sdmmc_read_cis(struct sdmmc_function *, struct sdmmc_cis *);
 void	sdmmc_print_cis(struct sdmmc_function *);
@@ -227,5 +287,28 @@ void	sdmmc_mem_scan(struct sdmmc_softc *);
 int	sdmmc_mem_init(struct sdmmc_softc *, struct sdmmc_function *);
 int	sdmmc_mem_read_block(struct sdmmc_function *, int, u_char *, size_t);
 int	sdmmc_mem_write_block(struct sdmmc_function *, int, u_char *, size_t);
+
+#ifdef HIBERNATE
+int	sdmmc_mem_hibernate_write(struct sdmmc_function *, daddr_t, u_char *,
+	    size_t);
+#endif
+
+/* ioctls */
+
+#include <sys/ioccom.h>
+
+struct bio_sdmmc_command {
+	void *cookie;
+	struct sdmmc_command cmd;
+};
+
+struct bio_sdmmc_debug {
+	void *cookie;
+	int debug;
+};
+
+#define SDIOCEXECMMC	_IOWR('S',0, struct bio_sdmmc_command)
+#define SDIOCEXECAPP	_IOWR('S',1, struct bio_sdmmc_command)
+#define SDIOCSETDEBUG	_IOWR('S',2, struct bio_sdmmc_debug)
 
 #endif

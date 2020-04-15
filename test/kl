@@ -3,7 +3,7 @@
 KEXT="Sinetek-rtsx.kext"
 
 # call copy first
-./c
+./c "$@"
 
 # sync filesystem before loading the kext (hopefully this will help prevent
 # filesystem corruption in case the kext crashes...).

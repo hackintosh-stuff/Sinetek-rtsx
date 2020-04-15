@@ -19,9 +19,6 @@
 #ifndef _SDMMCREG_H_
 #define _SDMMCREG_H_
 
-#include <stdint.h>
-#include <machine/limits.h>
-
 /* MMC commands */				/* response type */
 #define MMC_GO_IDLE_STATE		0	/* R0 */
 #define MMC_SEND_OP_COND		1	/* R3 */

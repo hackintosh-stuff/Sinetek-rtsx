@@ -1,4 +1,4 @@
-/*	$OpenBSD: sdmmc_mem.c,v 1.29 2016/05/05 20:40:48 kettenis Exp $	*/
+/*	$OpenBSD: sdmmc_mem.c,v 1.33 2018/06/04 13:33:10 patrick Exp $	*/
 
 /*
  * Copyright (c) 2006 Uwe Stuehler <uwe@openbsd.org>
@@ -18,16 +18,25 @@
 
 /* Routines for SD/MMC memory cards. */
 
-#ifdef __APPLE__
+#if __APPLE__
 #include "openbsd/openbsd_compat.h"
 #else
 #include <sys/param.h>
+#include <sys/device.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/systm.h>
+
+#include <dev/sdmmc/sdmmcchip.h>
+#include <dev/sdmmc/sdmmcreg.h>
+#include <dev/sdmmc/sdmmcvar.h>
 #endif // __APPLE__
 
-typedef struct __attribute__((packed, aligned(4))) { uint32_t _bits[512/32]; } sdmmc_bitfield512_t;
+#ifdef HIBERNATE
+#include <uvm/uvm_extern.h>
+#endif
+
+typedef struct { uint32_t _bits[512/32]; } __packed __aligned(4) sdmmc_bitfield512_t;
 
 void	sdmmc_be512_to_bitfield512(sdmmc_bitfield512_t *);
 
@@ -45,19 +54,19 @@ int	sdmmc_mem_decode_scr(struct sdmmc_softc *, uint32_t *,
 	    struct sdmmc_function *);
 
 int	sdmmc_mem_send_cxd_data(struct sdmmc_softc *, int, void *, size_t);
-int	sdmmc_set_bus_width(struct sdmmc_function *, int);
+int	sdmmc_mem_set_bus_width(struct sdmmc_function *, int);
 int	sdmmc_mem_mmc_switch(struct sdmmc_function *, uint8_t, uint8_t, uint8_t);
 
 int	sdmmc_mem_sd_init(struct sdmmc_softc *, struct sdmmc_function *);
 int	sdmmc_mem_mmc_init(struct sdmmc_softc *, struct sdmmc_function *);
-//int	sdmmc_mem_single_read_block(struct sdmmc_function *, int, u_char *,
-//				    size_t);
-int	sdmmc_mem_read_block_subr(struct sdmmc_function *,
-				  int, u_char *, size_t);
-//int	sdmmc_mem_single_write_block(struct sdmmc_function *, int, u_char *,
-//				     size_t);
-//int	sdmmc_mem_write_block_subr(struct sdmmc_function *, bus_dmamap_t,
-//				   int, u_char *, size_t);
+int	sdmmc_mem_single_read_block(struct sdmmc_function *, int, u_char *,
+	size_t);
+int	sdmmc_mem_read_block_subr(struct sdmmc_function *, bus_dmamap_t,
+	int, u_char *, size_t);
+int	sdmmc_mem_single_write_block(struct sdmmc_function *, int, u_char *,
+	size_t);
+int	sdmmc_mem_write_block_subr(struct sdmmc_function *, bus_dmamap_t,
+	int, u_char *, size_t);
 
 #ifdef SDMMC_DEBUG
 #define DPRINTF(s)	printf s
@@ -74,6 +83,8 @@ sdmmc_mem_enable(struct sdmmc_softc *sc)
 	u_int32_t host_ocr;
 	u_int32_t card_ocr;
 
+	rw_assert_wrlock(&sc->sc_lock);
+
 	/* Set host mode to SD "combo" card or SD memory-only. */
 	SET(sc->sc_flags, SMF_SD_MODE|SMF_MEM_MODE);
 
@@ -86,7 +97,7 @@ sdmmc_mem_enable(struct sdmmc_softc *sc)
 	 * MMC cards will not respond to CMD55 or ACMD41 and this is
 	 * how we distinguish them from SD cards.
 	 */
-mmc_mode:
+ mmc_mode:
 	if (sdmmc_mem_send_op_cond(sc, 0, &card_ocr) != 0) {
 		if (ISSET(sc->sc_flags, SMF_SD_MODE) &&
 		    !ISSET(sc->sc_flags, SMF_IO_MODE)) {
@@ -106,7 +117,7 @@ mmc_mode:
 	}
 
 	/* Set the lowest voltage supported by the card and host. */
-	host_ocr = rtsx_host_ocr(sc);
+	host_ocr = sdmmc_chip_host_ocr(sc->sct, sc->sch);
 	if (sdmmc_set_bus_power(sc, host_ocr, card_ocr) != 0) {
 		DPRINTF(("%s: can't supply voltage requested by card\n",
 		    DEVNAME(sc)));
@@ -136,12 +147,13 @@ mmc_mode:
 void
 sdmmc_mem_scan(struct sdmmc_softc *sc)
 {
-	UTL_DEBUG_FUN("START");
 	struct sdmmc_command cmd;
 	struct sdmmc_function *sf;
 	u_int16_t next_rca;
 	int error;
 	int i;
+
+	rw_assert_wrlock(&sc->sc_lock);
 
 	/*
 	 * CMD2 is a broadcast command understood by SD cards and MMC
@@ -158,7 +170,6 @@ sdmmc_mem_scan(struct sdmmc_softc *sc)
 		error = sdmmc_mmc_command(sc, &cmd);
 		if (error == ETIMEDOUT) {
 			/* No more cards there. */
-			UTL_DEBUG_DEF("NO MORE CARDS! (i = %d)", i);
 			break;
 		} else if (error != 0) {
 			DPRINTF(("%s: can't read CID\n", DEVNAME(sc)));
@@ -168,7 +179,7 @@ sdmmc_mem_scan(struct sdmmc_softc *sc)
 		/* In MMC mode, find the next available RCA. */
 		next_rca = 1;
 		if (!ISSET(sc->sc_flags, SMF_SD_MODE))
-			STAILQ_FOREACH(sf, &sc->sf_head, sf_list)
+			SIMPLEQ_FOREACH(sf, &sc->sf_head, sf_list)
 				next_rca++;
 
 		/* Allocate a sdmmc_function structure. */
@@ -211,14 +222,14 @@ sdmmc_mem_scan(struct sdmmc_softc *sc)
 		if (sc->sc_fn0 == NULL)
 			sc->sc_fn0 = sf;
 
-		STAILQ_INSERT_TAIL(&sc->sf_head, sf, sf_list);
+		SIMPLEQ_INSERT_TAIL(&sc->sf_head, sf, sf_list);
 	}
 
 	/*
 	 * All cards are either inactive or awaiting further commands.
 	 * Read the CSDs and decode the raw CID for each card.
 	 */
-	STAILQ_FOREACH(sf, &sc->sf_head, sf_list) {
+	SIMPLEQ_FOREACH(sf, &sc->sf_head, sf_list) {
 		bzero(&cmd, sizeof cmd);
 		cmd.c_opcode = MMC_SEND_CSD;
 		cmd.c_arg = MMC_ARG_RCA(sf->rca);
@@ -240,7 +251,6 @@ sdmmc_mem_scan(struct sdmmc_softc *sc)
 		sdmmc_print_cid(&sf->cid);
 #endif
 	}
-	UTL_DEBUG_FUN("END");
 }
 
 int
@@ -287,7 +297,7 @@ sdmmc_decode_csd(struct sdmmc_softc *sc, sdmmc_response resp,
 		}
 	}
 	csd->sector_size = MIN(1 << csd->read_bl_len,
-			       rtsx_host_maxblklen(sc));
+	    sdmmc_chip_host_maxblklen(sc->sct, sc->sch));
 	if (csd->sector_size < (1<<csd->read_bl_len))
 		csd->capacity *= (1<<csd->read_bl_len) /
 		    csd->sector_size;
@@ -340,8 +350,8 @@ void
 sdmmc_print_cid(struct sdmmc_cid *cid)
 {
 	printf("mid=0x%02x oid=0x%04x pnm=\"%s\" rev=0x%02x psn=0x%08x"
-	       " mdt=%03x\n", cid->mid, cid->oid, cid->pnm, cid->rev, cid->psn,
-	       cid->mdt);
+	    " mdt=%03x\n", cid->mid, cid->oid, cid->pnm, cid->rev, cid->psn,
+	    cid->mdt);
 }
 #endif
 
@@ -352,12 +362,11 @@ sdmmc_mem_send_scr(struct sdmmc_softc *sc, uint32_t *scr)
 	void *ptr = NULL;
 	int datalen = 8;
 	int error = 0;
-	
-//	ptr = malloc(datalen, M_DEVBUF, M_NOWAIT | M_ZERO);
-	ptr = new uint8_t [datalen] ();
+
+	ptr = malloc(datalen, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (ptr == NULL)
 		goto out;
-	
+
 	memset(&cmd, 0, sizeof(cmd));
 	cmd.c_data = ptr;
 	cmd.c_datalen = datalen;
@@ -365,46 +374,51 @@ sdmmc_mem_send_scr(struct sdmmc_softc *sc, uint32_t *scr)
 	cmd.c_arg = 0;
 	cmd.c_flags = SCF_CMD_ADTC | SCF_CMD_READ | SCF_RSP_R1;
 	cmd.c_opcode = SD_APP_SEND_SCR;
-	
+
 	error = sdmmc_app_command(sc, &cmd);
 	if (error == 0)
 		memcpy(scr, ptr, datalen);
-	
+
 out:
 	if (ptr != NULL)
-//		free(ptr, M_DEVBUF, datalen);
-		delete [] (uint8_t *) ptr;
-		
+		free(ptr, M_DEVBUF, datalen);
+
 	return error;
 }
 
 int
 sdmmc_mem_decode_scr(struct sdmmc_softc *sc, uint32_t *raw_scr,
-		     struct sdmmc_function *sf)
+    struct sdmmc_function *sf)
 {
 	sdmmc_response resp;
 	int ver;
-	
+
 	memset(resp, 0, sizeof(resp));
 	/*
 	 * Change the raw SCR to a response.
 	 */
-	resp[0] = OSSwapBigToHostInt32(raw_scr[1]) >> 8;		// LSW
-	resp[1] = OSSwapBigToHostInt32(raw_scr[0]);			// MSW
+	resp[0] = be32toh(raw_scr[1]) >> 8;		// LSW
+	resp[1] = be32toh(raw_scr[0]);			// MSW
 	resp[0] |= (resp[1] & 0xff) << 24;
 	resp[1] >>= 8;
-	
+
 	ver = SCR_STRUCTURE(resp);
 	sf->scr.sd_spec = SCR_SD_SPEC(resp);
 	sf->scr.bus_width = SCR_SD_BUS_WIDTHS(resp);
-	
+
 	DPRINTF(("%s: %s: %08x%08x ver=%d, spec=%d, bus width=%d\n",
-		 DEVNAME(sc), __func__, resp[1], resp[0],
-		 ver, sf->scr.sd_spec, sf->scr.bus_width));
-	
+	    DEVNAME(sc), __func__, resp[1], resp[0],
+	    ver, sf->scr.sd_spec, sf->scr.bus_width));
+
 	if (ver != 0) {
+#if __APPLE__
+		/* this should be an error */
 		UTL_ERR("%s: unknown SCR structure version: %d\n",
 		    DEVNAME(sc), ver);
+#else
+		DPRINTF(("%s: unknown SCR structure version: %d\n",
+		    DEVNAME(sc), ver));
+#endif
 		return EINVAL;
 	}
 	return 0;
@@ -412,23 +426,22 @@ sdmmc_mem_decode_scr(struct sdmmc_softc *sc, uint32_t *raw_scr,
 
 int
 sdmmc_mem_send_cxd_data(struct sdmmc_softc *sc, int opcode, void *data,
-			size_t datalen)
+    size_t datalen)
 {
 	struct sdmmc_command cmd;
 	void *ptr = NULL;
 	int error = 0;
-	
-//	ptr = malloc(datalen, M_DEVBUF, M_NOWAIT | M_ZERO);
-	ptr = new uint8_t[datalen] ();
+
+	ptr = malloc(datalen, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (ptr == NULL) {
 		error = ENOMEM;
 		goto out;
 	}
-	
+
 	memset(&cmd, 0, sizeof(cmd));
 	cmd.c_data = ptr;
-	cmd.c_datalen = static_cast<int>(datalen);
-	cmd.c_blklen = static_cast<int>(datalen);
+	cmd.c_datalen = datalen;
+	cmd.c_blklen = datalen;
 	cmd.c_opcode = opcode;
 	cmd.c_arg = 0;
 	cmd.c_flags = SCF_CMD_ADTC | SCF_CMD_READ;
@@ -436,21 +449,20 @@ sdmmc_mem_send_cxd_data(struct sdmmc_softc *sc, int opcode, void *data,
 		SET(cmd.c_flags, SCF_RSP_R1);
 	else
 		SET(cmd.c_flags, SCF_RSP_R2);
-	
+
 	error = sdmmc_mmc_command(sc, &cmd);
 	if (error == 0)
 		memcpy(data, ptr, datalen);
-	
+
 out:
 	if (ptr != NULL)
-//		free(ptr, M_DEVBUF, 0);
-		delete [] (uint8_t *) ptr;
-	
+		free(ptr, M_DEVBUF, datalen);
+
 	return error;
 }
 
 int
-sdmmc_set_bus_width(struct sdmmc_function *sf, int width)
+sdmmc_mem_set_bus_width(struct sdmmc_function *sf, int width)
 {
 	struct sdmmc_softc *sc = sf->sc;
 	struct sdmmc_command cmd;
@@ -475,7 +487,7 @@ sdmmc_set_bus_width(struct sdmmc_function *sf, int width)
 
 	error = sdmmc_app_command(sc, &cmd);
 	if (error == 0)
-		error = rtsx_bus_width(sc, width);
+		error = sdmmc_chip_bus_width(sc->sct, sc->sch, width);
 	return error;
 }
 
@@ -498,9 +510,8 @@ sdmmc_mem_sd_switch(struct sdmmc_function *sf, int mode, int group,
 		return EINVAL;
 
 	gsft = (group - 1) << 2;
-	
-//	ptr = malloc(statlen, M_DEVBUF, M_NOWAIT | M_ZERO);
-	ptr = new uint8_t[statlen] ();
+
+	ptr = malloc(statlen, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (ptr == NULL)
 		goto out;
 
@@ -519,9 +530,8 @@ sdmmc_mem_sd_switch(struct sdmmc_function *sf, int mode, int group,
 
 out:
 	if (ptr != NULL)
-//		free(ptr, M_DEVBUF, statlen);
-		delete [] (uint8_t *) ptr;
-	
+		free(ptr, M_DEVBUF, statlen);
+
 	if (error == 0)
 		sdmmc_be512_to_bitfield512(status);
 
@@ -552,6 +562,8 @@ sdmmc_mem_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 {
 	int error = 0;
 
+	rw_assert_wrlock(&sc->sc_lock);
+
 	if (sdmmc_select_card(sc, sf) != 0 ||
 	    sdmmc_mem_set_blocklen(sc, sf) != 0) {
 		UTL_ERR("select_card/set_blocklen failed!");
@@ -565,23 +577,22 @@ sdmmc_mem_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 		UTL_DEBUG_DEF("Initializing MMC memory...");
 		error = sdmmc_mem_mmc_init(sc, sf);
 	}
+
 	return error;
 }
 
 /* make 512-bit BE quantity __bitfield()-compatible */
 void
 sdmmc_be512_to_bitfield512(sdmmc_bitfield512_t *buf) {
-#define nitems(_a)	(sizeof((_a)) / sizeof((_a)[0]))
 	size_t i;
 	uint32_t tmp0, tmp1;
 	const size_t bitswords = nitems(buf->_bits);
 	for (i = 0; i < bitswords/2; i++) {
 		tmp0 = buf->_bits[i];
 		tmp1 = buf->_bits[bitswords - 1 - i];
-		buf->_bits[i] = OSSwapBigToHostInt32(tmp1);
-		buf->_bits[bitswords - 1 - i] = OSSwapBigToHostInt32(tmp0);
+		buf->_bits[i] = be32toh(tmp1);
+		buf->_bits[bitswords - 1 - i] = be32toh(tmp0);
 	}
-#undef nitems
 }
 
 int
@@ -598,8 +609,8 @@ sdmmc_mem_sd_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 	 * RTS5229 host controller if it is running at a low clock
 	 * frequency.  Reading the SCR requires a data transfer.
 	 */
-	error = rtsx_bus_clock(sc, SDMMC_SDCLK_25MHZ,
-				     SDMMC_TIMING_LEGACY);
+	error = sdmmc_chip_bus_clock(sc->sct, sc->sch, SDMMC_SDCLK_25MHZ,
+	    SDMMC_TIMING_LEGACY);
 	if (error) {
 		printf("%s: can't change bus clock\n", DEVNAME(sc));
 		return error;
@@ -611,15 +622,20 @@ sdmmc_mem_sd_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 		return error;
 	}
 	error = sdmmc_mem_decode_scr(sc, raw_scr, sf);
+#if __APPLE__
 	if (error) {
 		UTL_ERR("DECODE SCR FAILED!");
 		return error;
 	}
+#else
+	if (error)
+		return error;
+#endif
 
 	if (ISSET(sc->sc_caps, SMC_CAPS_4BIT_MODE) &&
 	    ISSET(sf->scr.bus_width, SCR_SD_BUS_WIDTHS_4BIT)) {
 		DPRINTF(("%s: change bus width\n", DEVNAME(sc)));
-		error = sdmmc_set_bus_width(sf, 4);
+		error = sdmmc_mem_set_bus_width(sf, 4);
 		if (error) {
 			printf("%s: can't change bus width\n", DEVNAME(sc));
 			return error;
@@ -655,11 +671,11 @@ sdmmc_mem_sd_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 		}
 
 		/* Wait 400KHz x 8 clock (2.5us * 8 + slop) */
-		IODelay(25);
-		
+		delay(25);
+
 		/* High Speed mode, Frequency up to 50MHz. */
-		error = rtsx_bus_clock(sc,
-					     SDMMC_SDCLK_50MHZ, SDMMC_TIMING_HIGHSPEED);
+		error = sdmmc_chip_bus_clock(sc->sct, sc->sch,
+		    SDMMC_SDCLK_50MHZ, SDMMC_TIMING_HIGHSPEED);
 		if (error) {
 			printf("%s: can't change bus clock\n", DEVNAME(sc));
 			return error;
@@ -679,6 +695,12 @@ sdmmc_mem_mmc_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 	int speed = 20000;
 	int timing = SDMMC_TIMING_LEGACY;
 	u_int32_t sectors = 0;
+
+	error = sdmmc_chip_bus_clock(sc->sct, sc->sch, speed, timing);
+	if (error) {
+		printf("%s: can't change bus clock\n", DEVNAME(sc));
+		return error;
+	}
 
 	if (sf->csd.mmcver >= MMC_CSD_MMCVER_4_0) {
 		/* read EXT_CSD */
@@ -704,7 +726,7 @@ sdmmc_mem_mmc_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 			speed = 26000;
 		} else {
 			printf("%s: unknown CARD_TYPE 0x%x\n", DEVNAME(sc),
-			       ext_csd[EXT_CSD_CARD_TYPE]);
+			    ext_csd[EXT_CSD_CARD_TYPE]);
 		}
 
 		if (timing != SDMMC_TIMING_LEGACY) {
@@ -719,8 +741,8 @@ sdmmc_mem_mmc_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 
 			sdmmc_delay(10000);
 		}
-		
-		error = rtsx_bus_clock(sc, speed, SDMMC_TIMING_HIGHSPEED);
+
+		error = sdmmc_chip_bus_clock(sc->sct, sc->sch, speed, SDMMC_TIMING_HIGHSPEED);
 		if (error != 0) {
 			printf("%s: can't change bus clock\n", DEVNAME(sc));
 			return error;
@@ -755,7 +777,8 @@ sdmmc_mem_mmc_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 			error = sdmmc_mem_mmc_switch(sf, EXT_CSD_CMD_SET_NORMAL,
 			    EXT_CSD_BUS_WIDTH, value);
 			if (error == 0)
-				error = rtsx_bus_width(sc, width);
+				error = sdmmc_chip_bus_width(sc->sct,
+				    sc->sch, width);
 			else {
 				DPRINTF(("%s: can't change bus width"
 				    " (%d bit)\n", DEVNAME(sc), width));
@@ -785,17 +808,16 @@ sdmmc_mem_mmc_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 			}
 
 			sdmmc_delay(10000);
-			
-//			error = sdmmc_chip_signal_voltage(sc->sct, sc->sch,
-//							  SDMMC_SIGNAL_VOLTAGE_180);
-//			if (error) {
-//				printf("%s: can't switch signalling voltage\n",
-//				       DEVNAME(sc));
-//				return error;
-//			}
-			printf("please implement sdmmc_chip_signal_voltage()\n");
-			
-			error = rtsx_bus_clock(sc, speed, timing);
+
+			error = sdmmc_chip_signal_voltage(sc->sct, sc->sch,
+			    SDMMC_SIGNAL_VOLTAGE_180);
+			if (error) {
+				printf("%s: can't switch signalling voltage\n",
+				    DEVNAME(sc));
+				return error;
+			}
+
+			error = sdmmc_chip_bus_clock(sc->sct, sc->sch, speed, timing);
 			if (error != 0) {
 				printf("%s: can't change bus clock\n", DEVNAME(sc));
 				return error;
@@ -829,6 +851,8 @@ sdmmc_mem_send_op_cond(struct sdmmc_softc *sc, u_int32_t ocr,
 	int error;
 	int i;
 
+	rw_assert_wrlock(&sc->sc_lock);
+
 	/*
 	 * If we change the OCR value, retry the command until the OCR
 	 * we receive in response has the "CARD BUSY" bit set, meaning
@@ -856,14 +880,12 @@ sdmmc_mem_send_op_cond(struct sdmmc_softc *sc, u_int32_t ocr,
 		error = ETIMEDOUT;
 		sdmmc_delay(10000);
 	}
+
+#if __APPLE__
+	UTL_DEBUG_DEF("c_resp[0]=0x%08x i=%d error=%d", cmd.c_resp[0], i, error);
+#endif
 	if (error == 0 && ocrp != NULL)
 		*ocrp = MMC_R3(cmd.c_resp);
-	
-#if DEBUG
-	if (error == ETIMEDOUT) {
-		printf("rtsx: sdmmc_mem_send_op_cmd timed out! (ocr=%d, i = %d)\n", ocr, i);
-	}
-#endif
 
 	return error;
 }
@@ -877,6 +899,8 @@ sdmmc_mem_set_blocklen(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 {
 	struct sdmmc_command cmd;
 
+	rw_assert_wrlock(&sc->sc_lock);
+
 	bzero(&cmd, sizeof cmd);
 	cmd.c_opcode = MMC_SET_BLOCKLEN;
 	cmd.c_arg = sf->csd.sector_size;
@@ -888,8 +912,8 @@ sdmmc_mem_set_blocklen(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 }
 
 int
-sdmmc_mem_read_block_subr(struct sdmmc_function *sf,
-			  int blkno, u_char *data, size_t datalen)
+sdmmc_mem_read_block_subr(struct sdmmc_function *sf, bus_dmamap_t dmap,
+    int blkno, u_char *data, size_t datalen)
 {
 	struct sdmmc_softc *sc = sf->sc;
 	struct sdmmc_command cmd;
@@ -910,8 +934,8 @@ sdmmc_mem_read_block_subr(struct sdmmc_function *sf,
 	else
 		cmd.c_arg = blkno << 9;
 	cmd.c_flags = SCF_CMD_ADTC | SCF_CMD_READ | SCF_RSP_R1;
-//	cmd.c_dmamap = dmap;
-	
+	cmd.c_dmamap = dmap;
+
 	error = sdmmc_mmc_command(sc, &cmd);
 	if (error != 0)
 		goto err;
@@ -950,8 +974,8 @@ sdmmc_mem_single_read_block(struct sdmmc_function *sf, int blkno, u_char *data,
 	int i;
 
 	for (i = 0; i < datalen / sf->csd.sector_size; i++) {
-		error = sdmmc_mem_read_block_subr(sf, blkno + i,
-						  data + i * sf->csd.sector_size, sf->csd.sector_size);
+		error = sdmmc_mem_read_block_subr(sf, NULL,  blkno + i,
+		    data + i * sf->csd.sector_size, sf->csd.sector_size);
 		if (error)
 			break;
 	}
@@ -966,28 +990,46 @@ sdmmc_mem_read_block(struct sdmmc_function *sf, int blkno, u_char *data,
 	struct sdmmc_softc *sc = sf->sc;
 	int error;
 
+	rw_enter_write(&sc->sc_lock);
+
 	if (ISSET(sc->sc_caps, SMC_CAPS_SINGLE_ONLY)) {
 		error = sdmmc_mem_single_read_block(sf, blkno, data, datalen);
 		goto out;
 	}
 
 	if (!ISSET(sc->sc_caps, SMC_CAPS_DMA)) {
-		error = sdmmc_mem_read_block_subr(sf, blkno,
-						  data, datalen);
+		error = sdmmc_mem_read_block_subr(sf, NULL, blkno,
+		    data, datalen);
 		goto out;
 	}
 
 	/* DMA transfer */
-	// XXX
-	error = ENOTSUP;
-	
+	error = bus_dmamap_load(sc->sc_dmat, sc->sc_dmap, data, datalen,
+	    NULL, BUS_DMA_NOWAIT|BUS_DMA_READ);
+	if (error)
+		goto out;
+
+	bus_dmamap_sync(sc->sc_dmat, sc->sc_dmap, 0, datalen,
+	    BUS_DMASYNC_PREREAD);
+
+	error = sdmmc_mem_read_block_subr(sf, sc->sc_dmap, blkno, data,
+	    datalen);
+	if (error)
+		goto unload;
+
+	bus_dmamap_sync(sc->sc_dmat, sc->sc_dmap, 0, datalen,
+	    BUS_DMASYNC_POSTREAD);
+unload:
+	bus_dmamap_unload(sc->sc_dmat, sc->sc_dmap);
+
 out:
+	rw_exit(&sc->sc_lock);
 	return (error);
 }
 
 int
-sdmmc_mem_write_block_subr(struct sdmmc_function *sf, void* dmap,
-			   int blkno, u_char *data, size_t datalen)
+sdmmc_mem_write_block_subr(struct sdmmc_function *sf, bus_dmamap_t dmap,
+    int blkno, u_char *data, size_t datalen)
 {
 	struct sdmmc_softc *sc = sf->sc;
 	struct sdmmc_command cmd;
@@ -1007,8 +1049,8 @@ sdmmc_mem_write_block_subr(struct sdmmc_function *sf, void* dmap,
 	else
 		cmd.c_arg = blkno << 9;
 	cmd.c_flags = SCF_CMD_ADTC | SCF_RSP_R1;
-//	cmd.c_dmamap = dmap;
-	
+	cmd.c_dmamap = dmap;
+
 	error = sdmmc_mmc_command(sc, &cmd);
 	if (error != 0)
 		goto err;
@@ -1062,6 +1104,8 @@ sdmmc_mem_write_block(struct sdmmc_function *sf, int blkno, u_char *data,
 	struct sdmmc_softc *sc = sf->sc;
 	int error;
 
+	rw_enter_write(&sc->sc_lock);
+
 	if (ISSET(sc->sc_caps, SMC_CAPS_SINGLE_ONLY)) {
 		error = sdmmc_mem_single_write_block(sf, blkno, data, datalen);
 		goto out;
@@ -1074,9 +1118,59 @@ sdmmc_mem_write_block(struct sdmmc_function *sf, int blkno, u_char *data,
 	}
 
 	/* DMA transfer */
-	// XXX
-	error = ENOTSUP;
-	
+	error = bus_dmamap_load(sc->sc_dmat, sc->sc_dmap, data, datalen,
+	    NULL, BUS_DMA_NOWAIT|BUS_DMA_WRITE);
+	if (error)
+		goto out;
+
+	bus_dmamap_sync(sc->sc_dmat, sc->sc_dmap, 0, datalen,
+	    BUS_DMASYNC_PREWRITE);
+
+	error = sdmmc_mem_write_block_subr(sf, sc->sc_dmap, blkno, data,
+	    datalen);
+	if (error)
+		goto unload;
+
+	bus_dmamap_sync(sc->sc_dmat, sc->sc_dmap, 0, datalen,
+	    BUS_DMASYNC_POSTWRITE);
+unload:
+	bus_dmamap_unload(sc->sc_dmat, sc->sc_dmap);
+
 out:
+	rw_exit(&sc->sc_lock);
 	return (error);
 }
+
+#ifdef HIBERNATE
+int
+sdmmc_mem_hibernate_write(struct sdmmc_function *sf, daddr_t blkno,
+    u_char *data, size_t datalen)
+{
+	struct sdmmc_softc *sc = sf->sc;
+	int i, error;
+	struct bus_dmamap dmamap;
+	paddr_t phys_addr;
+
+	if (ISSET(sc->sc_caps, SMC_CAPS_SINGLE_ONLY)) {
+		for (i = 0; i < datalen / sf->csd.sector_size; i++) {
+			error = sdmmc_mem_write_block_subr(sf, NULL, blkno + i,
+			    data + i * sf->csd.sector_size,
+			    sf->csd.sector_size);
+			if (error)
+				return (error);
+		}
+	} else if (!ISSET(sc->sc_caps, SMC_CAPS_DMA)) {
+		return (sdmmc_mem_write_block_subr(sf, NULL, blkno, data,
+		    datalen));
+	}
+
+	/* pretend we're bus_dmamap_load */
+	bzero(&dmamap, sizeof(dmamap));
+	pmap_extract(pmap_kernel(), (vaddr_t)data, &phys_addr);
+	dmamap.dm_mapsize = datalen;
+	dmamap.dm_nsegs = 1;
+	dmamap.dm_segs[0].ds_addr = phys_addr;
+	dmamap.dm_segs[0].ds_len = datalen;
+	return (sdmmc_mem_write_block_subr(sf, &dmamap, blkno, data, datalen));
+}
+#endif

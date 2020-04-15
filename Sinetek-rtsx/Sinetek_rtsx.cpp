@@ -1,5 +1,7 @@
 #include "Sinetek_rtsx.hpp"
 
+#include <pexpert/pexpert.h> // PE_parse_boot_argn
+
 #include <IOKit/IOLib.h>
 #include <IOKit/pci/IOPCIDevice.h>
 #include <IOKit/IOTimerEventSource.h>
@@ -9,19 +11,16 @@
 
 #undef super
 #define super IOService
-OSDefineMetaClassAndStructors(rtsx_softc, super);
+OSDefineMetaClassAndStructors(Sinetek_rtsx, super);
 
+#include "openbsd_compat_config.h" // config_detach
 #include "rtsxreg.h"
-#include "rtsxvar.h"
+#include "rtsxvar.h" // rtsx_softc
 #include "SDDisk.hpp"
 
-#define UTL_THIS_CLASS "rtsx_softc::"
+#undef UTL_THIS_CLASS
+#define UTL_THIS_CLASS "Sinetek_rtsx::"
 #include "util.h"
-
-// use the ones in rtsx.cpp (they are not declared static)
-uint32_t READ4(rtsx_softc *sc, uint32_t reg);
-void WRITE4(rtsx_softc *sc, uint32_t reg, uint32_t val);
-
 
 //
 // syscl - define & enumerate power states
@@ -33,6 +32,7 @@ enum
 	kPowerStateNormal   = 2,
 	kPowerStateCount
 };
+
 //
 // syscl - Define usable power states
 //
@@ -43,7 +43,34 @@ static IOPMPowerState ourPowerStates[kPowerStateCount] =
 	{ 1,kIOPMDeviceUsable,IOPMPowerOn,IOPMPowerOn,0,0,0,0,0,0,0,0 }
 };
 
-bool rtsx_softc::start(IOService *provider)
+bool Sinetek_rtsx::init(OSDictionary *dictionary) {
+	if (!super::init()) return false;
+	UTL_DEBUG_FUN("START");
+
+	// initialize variables / allocate memory
+	if (!(rtsx_softc_original_ = UTL_MALLOC(struct rtsx_softc))) {
+		UTL_ERR("ERROR ALLOCATING MEMORY!");
+		return false;
+	}
+	uint32_t dummy;
+	write_enabled_ = PE_parse_boot_argn("-rtsx_rw", &dummy, sizeof(dummy));
+	if (write_enabled_) {
+		UTL_LOG("Writing is enabled");
+	}
+	UTL_DEBUG_FUN("END");
+	return true;
+}
+
+void Sinetek_rtsx::free() {
+	UTL_DEBUG_FUN("START");
+	// deallocate memory
+	UTL_FREE(rtsx_softc_original_, struct rtsx_softc);
+
+	super::free();
+	UTL_DEBUG_FUN("END");
+}
+
+bool Sinetek_rtsx::start(IOService *provider)
 {
 	UTL_DEBUG_FUN("START");
 	if (!super::start(provider))
@@ -59,18 +86,30 @@ bool rtsx_softc::start(IOService *provider)
 	if (!provider_)
 	{
 		UTL_ERR("IOPCIDevice cannot be cast.");
-		return false;
+		goto ERROR;
 	}
 
 	workloop_ = getWorkLoop();
+	if (!workloop_) goto ERROR;
 	/*
 	 * Enable memory response from the card.
 	 */
 	provider_->setMemoryEnable(true);
 
 	prepare_task_loop();
+	if (openbsd_compat_start(this)) {
+		goto ERROR;
+	}
 	rtsx_pci_attach();
 	
+	PMinit();
+	provider_->joinPMtree(this);
+	if (registerPowerDriver(this, ourPowerStates, kPowerStateCount) != IOPMNoErr)
+	{
+		UTL_ERR("registerPowerDriver failed");
+	}
+	UTL_DEBUG_DEF("Power management initialized");
+
 	UTL_LOG("Driver started (%s version)",
 #if DEBUG
 		"debug");
@@ -78,12 +117,22 @@ bool rtsx_softc::start(IOService *provider)
 		"release");
 #endif
 	return true;
+ERROR:
+	workloop_ = NULL;
+	if (splsdmmc_rec_lock)
+		IORecursiveLockFree(splsdmmc_rec_lock);
+	if (intr_status_lock)
+		IOLockFree(intr_status_lock);
+
+	UTL_DEBUG_FUN("END");
+	return false;
 }
 
 // WATCH OUT: stop() may not be called if start() fails!
-void rtsx_softc::stop(IOService *provider)
+void Sinetek_rtsx::stop(IOService *provider)
 {
 	rtsx_pci_detach();
+	openbsd_compat_stop();
 	destroy_task_loop();
 	if (workloop_) {
 		workloop_->release();
@@ -93,6 +142,9 @@ void rtsx_softc::stop(IOService *provider)
 	}
 	PMstop();
 
+
+	IOSleep(1000); // give the worker thread some time to finish TODO: Fix this!
+
 	super::stop(provider);
 	UTL_LOG("Driver stopped.");
 }
@@ -101,14 +153,16 @@ static void trampoline_intr(OSObject *ih, IOInterruptEventSource *ies, int count
 {
 	UTL_DEBUG_INT("Interrupt received (ies=" RTSX_PTR_FMT " count=%d)!", RTSX_PTR_FMT_VAR(ies), count);
 	/* go to isr handler */
-	rtsx_softc * that = OSDynamicCast(rtsx_softc, ih);
-	rtsx_intr(that);
+	auto self = OSDynamicCast(Sinetek_rtsx, ih);
+	if (self && self->rtsx_softc_original_)
+		::rtsx_intr(self->rtsx_softc_original_);
+	else
+		UTL_ERR("Object received is not a Sinetek_rtsx!");
 }
 
-void rtsx_softc::rtsx_pci_attach()
+void Sinetek_rtsx::rtsx_pci_attach()
 {
 	uint device_id;
-	//uint32_t flags;
 	int bar = RTSX_PCI_BAR;
 
 	UTL_DEBUG_FUN("START");
@@ -122,20 +176,20 @@ void rtsx_softc::rtsx_pci_attach()
 	/* Enable the device */
 	provider_->setBusMasterEnable(true);
 
-	/* syscl - Power up the device */
-	PMinit();
-	if (registerPowerDriver(this, ourPowerStates, kPowerStateCount) != IOPMNoErr)
-	{
-		IOLog("%s: could not register state.\n", __func__);
-	}
-
 	/* Map device memory with register. */
 	device_id = provider_->extendedConfigRead16(kIOPCIConfigDeviceID);
 	if (device_id == PCI_PRODUCT_REALTEK_RTS525A)
 		bar = RTSX_PCI_BAR_525A;
 	map_ = provider_->mapDeviceMemoryWithRegister(bar);
-	if (!map_) return;
+	if (!map_) {
+		UTL_ERR("Could not get device memory map!");
+		return;
+	}
 	memory_descriptor_ = map_->getMemoryDescriptor();
+	if (!memory_descriptor_) {
+		UTL_ERR("Could not get device memory descriptor!");
+		return;
+	}
 
 	/* Map device interrupt. */
 #if RTSX_USE_IOFIES
@@ -153,6 +207,7 @@ void rtsx_softc::rtsx_pci_attach()
 
 	/* Get the vendor and try to match on it. */
 	//device_id = provider_->extendedConfigRead16(kIOPCIConfigDeviceID);
+	int flags;
 	switch (device_id) {
 		case PCI_PRODUCT_REALTEK_RTS5209:
 			flags = RTSX_F_5209;
@@ -164,22 +219,41 @@ void rtsx_softc::rtsx_pci_attach()
 		case PCI_PRODUCT_REALTEK_RTS525A:
 			/* syscl - RTS525A */
 			flags = RTSX_F_525A;
+			bar = RTSX_PCI_BAR_525A;
 			break;
 		default:
 			flags = 0;
 			break;
 	}
-	
-	int error = rtsx_attach(this);
-	if (!error)
-	{
+
+	UTL_CHK_PTR(this->rtsx_softc_original_,);
+	UTL_DEBUG_DEF("Calling attach%s...", (flags & RTSX_F_525A) ? " (525A detected)" : "");
+	int error = ::rtsx_attach(this->rtsx_softc_original_, gBusSpaceTag,
+				  (bus_space_handle_t) memory_descriptor_,
+				  0/* ignored */,
+				  gBusDmaTag, flags);
+
+	if (!error) {
 		//		pci_present_and_attached_ = true;
+		if (this->rtsx_softc_original_->flags & RTSX_F_SDIO_SUPPORT)
+			UTL_DEBUG_DEF("SDIO detected");
+	} else {
+		UTL_ERR("rtsx_attach returned error %d", error);
 	}
+	UTL_DEBUG_FUN("END");
 }
 
-void rtsx_softc::rtsx_pci_detach()
+/// In OpenBSD this is not implemented, but that means that the detach() should be passed on to the children (sdmmc).
+/// An SDDisk is created when an SD card is inserted, but the sdmmc is active all the time. For that reason, we call
+/// detach for the sdmmc here and not in SDDisk.
+void Sinetek_rtsx::rtsx_pci_detach()
 {
-	//	rtsx_detach();
+	// call detach on sdmmc
+	// TODO: This should actually be called on rtsx_softc_original_, but the logic of calling children's detach()
+	// is not implemented yet at the compatibility layer. So since we know that the only child is sdmmc, we call it
+	// directly.
+	config_detach(rtsx_softc_original_->sdmmc, 0);
+	//sdmmc_detach(rtsx_softc_original_->sdmmc, 0);
 
 	UTL_CHK_PTR(workloop_,);
 	UTL_CHK_PTR(intr_source_,);
@@ -196,25 +270,35 @@ void rtsx_softc::rtsx_pci_detach()
 	IOLockFree(this->intr_status_lock);
 	this->intr_status_lock = nullptr;
 #endif // RTSX_USE_IOLOCK
+	// TODO: test map_->release();
 }
 
-
-IOReturn rtsx_softc::setPowerState(unsigned long powerStateOrdinal, IOService *policyMaker)
+// TODO: Seems like this is wrong. Power states should match those supported by the OpenBSD driver.
+// TODO: Review this method and power in general.
+// TODO: Be careful because this is called from a different thread, (in parallel with start())
+IOReturn Sinetek_rtsx::setPowerState(unsigned long powerStateOrdinal, IOService *policyMaker)
 {
 	IOReturn ret = IOPMAckImplied;
+	auto previousState = this->getPowerState();
 
-	IOLog("%s::setPowerState() ===>\n", __func__);
+	UTL_DEBUG_FUN("START");
 
 	if (powerStateOrdinal)
 	{
-		IOLog("%s::setPowerState: Wake from sleep\n", __func__);
-		rtsx_activate(this, 1);
+		UTL_DEBUG_DEF("Wake from sleep (powerStateOrdinal: %u -> %u)",
+			  (unsigned) previousState,
+			  (unsigned) powerStateOrdinal);
+		// TODO: SEND PROPER ARGUMENT (DVACT_*)
+		//        rtsx_activate(this, 1);
 		goto done;
 	}
 	else
 	{
-		IOLog("%s::setPowerState: Sleep the card\n", __func__);
-		rtsx_activate(this, 0);
+		UTL_DEBUG_DEF("Sleep the card (powerStateOrdinal: %u -> %u)\n",
+			  (unsigned) previousState,
+			  (unsigned) powerStateOrdinal);
+		// TODO: SEND PROPER ARGUMENT (DVACT_*)
+		//        rtsx_activate(this, 0);
 		goto done;
 	}
 
@@ -224,7 +308,7 @@ done:
 	return ret;
 }
 
-void rtsx_softc::prepare_task_loop()
+void Sinetek_rtsx::prepare_task_loop()
 {
 	UTL_CHK_PTR(workloop_,);
 #if RTSX_USE_IOCOMMANDGATE
@@ -242,7 +326,7 @@ void rtsx_softc::prepare_task_loop()
 #endif
 }
 
-void rtsx_softc::destroy_task_loop()
+void Sinetek_rtsx::destroy_task_loop()
 {
 	UTL_CHK_PTR(task_execute_one_,);
 	task_execute_one_->cancelTimeout();
@@ -266,34 +350,30 @@ void rtsx_softc::destroy_task_loop()
 #endif
 }
 
-/*
- * Takes a task off the list, executes it, and then
- * deletes that same task.
- */
-extern auto sdmmc_del_task(struct sdmmc_task *task)		-> void;
-
-void rtsx_softc::task_execute_one_impl_(OSObject *target, IOTimerEventSource *sender)
+void Sinetek_rtsx::task_execute_one_impl_(OSObject *target, IOTimerEventSource *sender)
 {
 	extern void read_task_impl_(void *_args);
 	UTL_DEBUG_DEF("  ===> TOOK TASK WORKLOOP...");
 	if (!target) return;
-	rtsx_softc *sc = (rtsx_softc *)target;
+	Sinetek_rtsx *sc = OSDynamicCast(Sinetek_rtsx, target);
 	struct sdmmc_task *task;
-	
+
 #if RTSX_USE_IOLOCK
 	IORecursiveLockLock(sc->splsdmmc_rec_lock);
 #endif
-	for (task = TAILQ_FIRST(&sc->sc_tskq); task != NULL;
-	     task = TAILQ_FIRST(&sc->sc_tskq)) {
-		UTL_DEBUG(1, "  => Executing one task (CRASHED HERE!)...");
+	struct sdmmc_softc *sdmmc = (struct sdmmc_softc *) sc->rtsx_softc_original_->sdmmc;
+	auto tskq = &sdmmc->sc_tskq;
+	for (task = TAILQ_FIRST(tskq); task != NULL;
+	     task = TAILQ_FIRST(tskq)) {
+		UTL_DEBUG_LOOP("  => Executing one task (CRASHED HERE!)...");
 		sdmmc_del_task(task);
-		UTL_DEBUG(1, "  => Task deleted from queue");
+		UTL_DEBUG_LOOP("  => Task deleted from queue");
 		task->func(task->arg);
-		UTL_DEBUG(1, "  => Executed one task!");
+		UTL_DEBUG_LOOP("  => Executed one task!");
 #if RTSX_FIX_TASK_BUG
 		if (task->func == read_task_impl_) {
 			// free only read_task
-			UTL_DEBUG(0, "Freeing read task...");
+			UTL_DEBUG_LOOP("Freeing read task...");
 			UTL_FREE(task, sizeof(sdmmc_task));
 		}
 #endif
@@ -304,35 +384,50 @@ void rtsx_softc::task_execute_one_impl_(OSObject *target, IOTimerEventSource *se
 	UTL_DEBUG_DEF("  <=== RELEASING TASK WORKLOOP...");
 }
 
+// forward declare
+extern void rtsx_card_eject(struct rtsx_softc *);
+
+void Sinetek_rtsx::cardEject()
+{
+	::rtsx_card_eject(rtsx_softc_original_);
+}
+
 /**
  *  Attach the macOS portion of the driver: block storage.
  *
  *  That block device will hand us back calls such as read/write blk.
  */
-void rtsx_softc::blk_attach()
+void Sinetek_rtsx::blk_attach()
 {
+	// TODO: Return an error when this method fails!
 	printf("rtsx: blk_attach()\n");
-	
-	sddisk_ = new SDDisk();
-	sddisk_->init(this);
+
+	sddisk_ = OSTypeAlloc(SDDisk); // equivalent to new SDDisk();
+	UTL_CHK_PTR(sddisk_,);
+	if (!sddisk_->init((struct sdmmc_softc *) rtsx_softc_original_->sdmmc)) { // TODO: Fix this!
+		sddisk_->release();
+		sddisk_ = NULL;
+		return;
+	};
 	sddisk_->attach(this);
 	UTL_DEBUG_DEF("Registering service...");
 	sddisk_->registerService(); // this should probably be called by the start() method of sddisk_
 	sddisk_->release();
 }
 
-void rtsx_softc::blk_detach()
+void Sinetek_rtsx::blk_detach()
 {
 	UTL_DEBUG_FUN("START");
 
 	if (!sddisk_->terminate()) {
 		UTL_DEBUG_DEF("sddisk->terminate() returns false!");
 	}
-	UTL_DEBUG(0, "END");
+	sddisk_ = NULL;
+	UTL_DEBUG_FUN("END");
 }
 
 #if RTSX_USE_IOFIES
-static uint32_t _READ4(rtsx_softc *sc, IOByteCount offset) {
+static uint32_t READ4(Sinetek_rtsx *sc, IOByteCount offset) {
 	uint32_t ret = 0;
 	sc->memory_descriptor_->readBytes(offset, &ret, 4);
 	// we cannot log here
@@ -340,17 +435,19 @@ static uint32_t _READ4(rtsx_softc *sc, IOByteCount offset) {
 }
 
 /// This function runs in interrupt context, meaning that IOLog CANNOT be used (only basic functionality is available).
-bool rtsx_softc::is_my_interrupt(OSObject *arg, IOFilterInterruptEventSource *source) {
+bool Sinetek_rtsx::is_my_interrupt(OSObject *arg, IOFilterInterruptEventSource *source) {
+	// Can't use UTL_CHK_PTR here because we can't log
 	if (!arg) return false;
 
-	rtsx_softc *sc = (rtsx_softc*) arg;
+	Sinetek_rtsx *sc = OSDynamicCast(Sinetek_rtsx, arg);
+	if (!sc) return false;
 
-	auto status = _READ4(sc, RTSX_BIPR);
+	auto status = READ4(sc, RTSX_BIPR);
 	if (!status) {
 		return false;
 	}
 
-	auto bier = _READ4(sc, RTSX_BIER);
+	auto bier = READ4(sc, RTSX_BIER);
 	if ((status & bier) == 0) return false;
 
 	return true;
@@ -359,15 +456,14 @@ bool rtsx_softc::is_my_interrupt(OSObject *arg, IOFilterInterruptEventSource *so
 
 
 #if RTSX_USE_IOCOMMANDGATE
-void rtsx_softc::executeOneAsCommand() {
-	UTL_DEBUG(0, "Calling runAction()...");
+void Sinetek_rtsx::executeOneAsCommand() {
+	UTL_DEBUG_DEF("Calling runAction()...");
 	task_command_gate_->runCommand(nullptr);
-	task_command_gate_->runAction(
-				      (IOCommandGate::Action) executeOneCommandGateAction);
-	UTL_DEBUG(0, "runAction() returns");
+	task_command_gate_->runAction((IOCommandGate::Action) executeOneCommandGateAction);
+	UTL_DEBUG_DEF("runAction() returns");
 }
 
-IOReturn rtsx_softc::executeOneCommandGateAction(OSObject *obj,
+IOReturn Sinetek_rtsx::executeOneCommandGateAction(OSObject *obj,
 						 void *,
 						 void *, void *, void * )
 {
@@ -377,3 +473,15 @@ IOReturn rtsx_softc::executeOneCommandGateAction(OSObject *obj,
 	UTL_DEBUG_DEF("EXECUTE ONE COMMANDGATEACTION RETURNING");
 }
 #endif // RTSX_USE_IOCOMMANDGATE
+
+bool Sinetek_rtsx::cardIsWriteProtected() {
+	auto bipr = ::bus_space_read_4(gBusSpaceTag,
+				       (bus_space_handle_t) memory_descriptor_, RTSX_BIPR);
+	return (bipr & RTSX_SD_WRITE_PROTECT) != 0;
+}
+
+
+bool Sinetek_rtsx::writeEnabled()
+{
+	return write_enabled_;
+}

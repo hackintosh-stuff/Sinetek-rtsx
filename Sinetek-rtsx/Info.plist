@@ -20,12 +20,12 @@
 	<string>1</string>
 	<key>IOKitPersonalities</key>
 	<dict>
-		<key>rtsx_softc</key>
+		<key>Sinetek_rtsx</key>
 		<dict>
 			<key>CFBundleIdentifier</key>
 			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 			<key>IOClass</key>
-			<string>rtsx_softc</string>
+			<string>Sinetek_rtsx</string>
 			<key>IOKitDebug</key>
 			<integer>65535</integer>
 			<key>IOPCIMatch</key>

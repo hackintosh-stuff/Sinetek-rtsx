@@ -4,7 +4,9 @@
 #include <os/log.h>
 
 #include <IOKit/IOLib.h> // IOSleep
+#if __cplusplus
 #include <IOKit/IOMemoryDescriptor.h> // IOMemoryDescriptor
+#endif
 
 #ifndef UTL_THIS_CLASS
 #error UTL_THIS_CLASS must be defined before including this file (i.e.: #define UTL_THIS_CLASS "SDDisk::").
@@ -88,7 +90,7 @@ static inline const char *mmcCmd2str(uint16_t mmcCmd) {
 		case 24: return "MMC_WRITE_BLOCK_SINGLE";
 		case 25: return "MMC_WRITE_BLOCK_MULTIPLE";
 		case 55: return "MMC_APP_CMD";
-			
+
 		case 41: return "SD_APP_OP_COND";
 		case 51: return "SD_APP_SEND_SCR";
 		default: return "?";
@@ -109,17 +111,17 @@ static inline const char *busSpaceReg2str(IOByteCount offset) {
 #endif // DEBUG
 
 #define UTL_CHK_PTR(ptr, ret) do { \
-if (!(ptr)) { \
-	UTL_ERR("null pointer (%s) found!!!", #ptr); \
-	return ret; \
-} \
+	if (!(ptr)) { \
+		UTL_ERR("null pointer (%s) found!!!", #ptr); \
+		return ret; \
+	} \
 } while (0)
 
 #if RTSX_USE_IOMALLOC
 #define UTL_MALLOC(TYPE) (TYPE *) UTLMalloc(#TYPE, sizeof(TYPE))
 static inline void *UTLMalloc(const char *type, size_t sz) {
-    UTL_DEBUG_MEM("Allocating a %s (%u bytes).", type, (unsigned) sz);
-    return IOMalloc(sz);
+	UTL_DEBUG_MEM("Allocating a %s (%u bytes).", type, (unsigned) sz);
+	return IOMalloc(sz);
 }
 #define UTL_FREE(ptr, TYPE) \
 do { \
@@ -131,12 +133,27 @@ do { \
 #define UTL_FREE(ptr, TYPE) \
 do { \
 	if (ptr) { \
-		delete ptr; \
+		delete (ptr); \
+		(ptr) = nullptr; \
 	} else { \
 		UTL_ERR("Tried to free null pointer (%s) of type %s", #ptr, #TYPE); \
 	} \
 } while (0)
 #endif // RTSX_USE_IOMALLOC
+
+#if DEBUG
+#define UTL_SAFE_RELEASE_NULL(ptr) \
+do { \
+	if (!(ptr)) \
+		UTL_ERR("%s: Tried to release null pointer!", #ptr); \
+	/* if ((ptr)->getRetainCount() != 1) \
+		UTL_ERR("%s: Wrong retain count (%d)", #ptr, (ptr)->getRetainCount()); */ \
+	(ptr)->release(); \
+	(ptr) = nullptr; \
+} while (0)
+#else
+#define UTL_SAFE_RELEASE_NULL(ptr) OSSafeReleaseNULL(ptr)
+#endif
 
 static inline AbsoluteTime nsecs2AbsoluteTimeDeadline(uint64_t nsecs) {
 	AbsoluteTime absInterval, deadline;
@@ -151,6 +168,8 @@ static inline AbsoluteTime timo2AbsoluteTimeDeadline(int timo) {
 	AbsoluteTime deadline = nsecs2AbsoluteTimeDeadline(nsDelay);
 	return deadline;
 }
+
+#if __cplusplus
 
 /// Only valid between prepare() and complete()
 static inline size_t bufferNSegments(IOMemoryDescriptor *md) {
@@ -184,6 +203,8 @@ static inline void dumpBuffer(IOMemoryDescriptor *md) {
 	}
 #endif // DEBUG
 }
+
+#endif // __cplusplus
 
 #define RTSX_PTR_FMT "0x%08x%08x"
 #define RTSX_PTR_FMT_VAR(ptr) (uint32_t) ((uintptr_t) ptr >> 32), (uint32_t) (uintptr_t) ptr

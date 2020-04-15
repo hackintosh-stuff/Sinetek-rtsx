@@ -1,10 +1,15 @@
 #!/bin/bash
 
-KPATH="$HOME/Library/Developer/Xcode/DerivedData/Sinetek-rtsx-bpnguoevveybdhfrrjjdpfweiiwu/Build/Products/Debug"
-KPATH2="`dirname $0`/../DerivedData/Build/Products/Debug"
+if [ $# -eq 1 -a "$1" = "-r" ]; then
+	REL_OR_DEB="Release"
+else
+	REL_OR_DEB="Debug"
+fi
+
+KPATH="$HOME/Library/Developer/Xcode/DerivedData/Sinetek-rtsx-bpnguoevveybdhfrrjjdpfweiiwu/Build/Products/$REL_OR_DEB"
+KPATH2="`dirname $0`/../DerivedData/Build/Products/$REL_OR_DEB"
 KEXT="Sinetek-rtsx.kext"
 BINPATH="Contents/MacOS/Sinetek-rtsx"
-
 # F2 should be the most recent file, otherwise a warning is shown
 function checkDate() {
 	local F1="$1"
@@ -28,7 +33,7 @@ function checkDate() {
 # copy and set uid/gid
 if [ -d "$KPATH/$KEXT" ]; then
 	if checkDate "$KEXT/$BINPATH" "$KPATH/$KEXT/$BINPATH"; then
-		echo "Copying from Xcode's DerivedData..."
+		echo "Copying $REL_OR_DEB from Xcode's DerivedData..."
 		sudo rm -rf "$KEXT"
 		cp -rp "$KPATH/$KEXT" ./
 	else
@@ -36,7 +41,7 @@ if [ -d "$KPATH/$KEXT" ]; then
 	fi
 elif [ -d "$KPATH2/$KEXT" ]; then
 	if checkDate "$KEXT/$BINPATH" "$KPATH2/$KEXT/$BINPATH"; then
-		echo "Copying from project-local DerivedData..."
+		echo "Copying $REL_OR_DEB from project-local DerivedData..."
 		sudo rm -rf "$KEXT"
 		cp -rp "$KPATH2/$KEXT" ./
 	else

@@ -18,11 +18,16 @@
 
 /* Routines to decode the Card Information Structure of SD I/O cards */
 
-#ifdef __APPLE__
+#if __APPLE__
 #include "openbsd/openbsd_compat.h"
 #else
 #include <sys/param.h>
+#include <sys/device.h>
 #include <sys/systm.h>
+
+#include <dev/sdmmc/sdmmc_ioreg.h>
+#include <dev/sdmmc/sdmmcdevs.h>
+#include <dev/sdmmc/sdmmcvar.h>
 #endif // __APPLE__
 
 u_int32_t sdmmc_cisptr(struct sdmmc_function *);
@@ -40,6 +45,8 @@ sdmmc_cisptr(struct sdmmc_function *sf)
 	u_int32_t cisptr = 0;
 	int reg;
 
+	rw_assert_wrlock(&sf->sc->sc_lock);
+
 	reg = SD_IO_CCCR_CISPTR + (sf->number * SD_IO_CCCR_SIZE);
 	cisptr |= sdmmc_io_read_1(sf0, reg + 0) << 0;
 	cisptr |= sdmmc_io_read_1(sf0, reg + 1) << 8;
@@ -55,6 +62,8 @@ sdmmc_read_cis(struct sdmmc_function *sf, struct sdmmc_cis *cis)
 	int reg;
 	u_int8_t tplcode;
 	u_int8_t tpllen;
+
+	rw_assert_wrlock(&sf->sc->sc_lock);
 
 	reg = (int)sdmmc_cisptr(sf);
 	if (reg < SD_IO_CIS_START ||
