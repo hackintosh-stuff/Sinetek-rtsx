@@ -53,6 +53,9 @@ static IOPMPowerState ourPowerStates[kPowerStateCount] =
 	}
 };
 
+// Use a global variable, since it will be accessed from the BSD code
+int Sinetek_rtsx_boot_arg_mimic_linux = 0;
+
 bool Sinetek_rtsx::init(OSDictionary *dictionary) {
 	if (!super::init()) return false;
 	UTL_DEBUG_FUN("START");
@@ -70,6 +73,7 @@ bool Sinetek_rtsx::init(OSDictionary *dictionary) {
 	if (write_enabled_) {
 		UTL_LOG("Writing is enabled");
 	}
+	Sinetek_rtsx_boot_arg_mimic_linux = (int) PE_parse_boot_argn("-rtsx_mimic_linux", &dummy, sizeof(dummy));
 	UTL_DEBUG_FUN("END");
 	return true;
 }

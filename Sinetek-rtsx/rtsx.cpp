@@ -23,6 +23,7 @@
 
 #if __APPLE__
 #include "openbsd/openbsd_compat.h"
+extern int Sinetek_rtsx_boot_arg_mimic_linux;
 #else // __APPLE__
 #include <sys/param.h>
 #include <sys/device.h>
@@ -257,7 +258,7 @@ destroy_cmd:
 	return 1;
 }
 
-#if __APPLE__ && DEBUG && RTSX_MIMIC_LINUX
+#if __APPLE__ && DEBUG
 // See: https://github.com/torvalds/linux/blob/master/drivers/misc/cardreader/rts5249.c
 static void rtsx_base_fetch_vendor_settings(struct rtsx_softc *pcr)
 {
@@ -328,10 +329,8 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 		} else {
 			UTL_ERR("Chip version unknown (%d)", version);
 		}
-#if RTSX_MIMIC_LINUX
 		if ((version & 0x0F) == RTSX_IC_VERSION_A)
 			sc->flags |= RTSX_F_525A_TYPE_A;
-#endif
 	}
 #endif /* __APPLE__ */
 
@@ -357,8 +356,8 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 	/* XXX magic numbers from linux driver */
 	if (sc->flags & RTSX_F_5209)
 		error = rtsx_write_phy(sc, 0x00, 0xB966);
-#if __APPLE__ && RTSX_MIMIC_LINUX
-	else if (sc->flags & RTSX_F_525A) {
+#if __APPLE__
+	else if (Sinetek_rtsx_boot_arg_mimic_linux && sc->flags & RTSX_F_525A) {
 		// optimize_phy
 		RTSX_CLR(sc, 0xff7e, 0x10);
 		error = rtsx_write_phy(sc, 0x1d, 0x99ff); // _PHY_FLD0
@@ -392,22 +391,25 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 	RTSX_CLR(sc, RTSX_CARD_CLK_EN, RTSX_CARD_CLK_EN_ALL);
 
 #if __APPLE__
-#if RTSX_MIMIC_LINUX
-	RTSX_CLR(sc, RTSX_CHANGE_LINK_STATE,
-	    RTSX_FORCE_RST_CORE_EN | RTSX_NON_STICKY_RST_N_DBG /* | 0x04 MIMMIC LINUX */);
-	if (sc->flags & (RTSX_F_5229 | RTSX_F_525A)) {
-		RTSX_WRITE(sc, 0xFD53 /* CARD_DRIVE_SEL */, 0x21); // MS_DRIVE_8mA|GPIO_DRIVE_8mA
-	}
-
+	if (Sinetek_rtsx_boot_arg_mimic_linux) {
+		RTSX_CLR(sc, RTSX_CHANGE_LINK_STATE,
+		    RTSX_FORCE_RST_CORE_EN | RTSX_NON_STICKY_RST_N_DBG /* | 0x04 MIMMIC LINUX */);
+		if (sc->flags & (RTSX_F_5229 | RTSX_F_525A)) {
+			RTSX_WRITE(sc, 0xFD53 /* CARD_DRIVE_SEL */, 0x21); // MS_DRIVE_8mA|GPIO_DRIVE_8mA
+		}
 #if DEBUG
-	// only for debugging purposes
-	rtsx_base_fetch_vendor_settings(sc);
+		// only for debugging purposes
+		rtsx_base_fetch_vendor_settings(sc);
 #endif
-#else
+	} else {
+		RTSX_CLR(sc, RTSX_CHANGE_LINK_STATE,
+		    RTSX_FORCE_RST_CORE_EN | RTSX_NON_STICKY_RST_N_DBG | 0x04);
+		RTSX_WRITE(sc, RTSX_SD30_DRIVE_SEL, RTSX_SD30_DRIVE_SEL_3V3);
+	}
+#else /* __APPLE__ */
 	RTSX_CLR(sc, RTSX_CHANGE_LINK_STATE,
 	    RTSX_FORCE_RST_CORE_EN | RTSX_NON_STICKY_RST_N_DBG | 0x04);
 	RTSX_WRITE(sc, RTSX_SD30_DRIVE_SEL, RTSX_SD30_DRIVE_SEL_3V3);
-#endif
 #endif
 
 	/* Enable SSC clock. */
@@ -415,11 +417,13 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 	RTSX_WRITE(sc, RTSX_SSC_CTL2, 0x12);
 
 #if __APPLE__
-#if RTSX_MIMIC_LINUX
-	UTL_CHK_SUCCESS(rtsx_write(sc, RTSX_CHANGE_LINK_STATE, 0x16, 0x10));
+	if (Sinetek_rtsx_boot_arg_mimic_linux) {
+		UTL_CHK_SUCCESS(rtsx_write(sc, RTSX_CHANGE_LINK_STATE, 0x16, 0x10));
+	} else {
+		RTSX_SET(sc, RTSX_CHANGE_LINK_STATE, RTSX_MAC_PHY_RST_N_DBG);
+	}
 #else
 	RTSX_SET(sc, RTSX_CHANGE_LINK_STATE, RTSX_MAC_PHY_RST_N_DBG);
-#endif
 #endif
 	RTSX_SET(sc, RTSX_IRQSTAT0, RTSX_LINK_READY_INT);
 
@@ -444,9 +448,9 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 		RTSX_SET(sc, RTSX_OLT_LED_CTL, RTSX_OLT_LED_PERIOD);
 	}
 
-#if __APPLE__ && RTSX_MIMIC_LINUX
+#if __APPLE__
 	// try not affect other chips...
-	if ((sc->flags & RTSX_F_525A) == 0)
+	if (!Sinetek_rtsx_boot_arg_mimic_linux || (sc->flags & RTSX_F_525A) == 0)
 		return 0;
 
 	// extra_init_hw
@@ -1584,11 +1588,11 @@ rtsx_wait_intr(struct rtsx_softc *sc, int mask, int secs)
 	status = sc->intr_status & mask;
 	while (status == 0) {
 		if (tsleep_nsec(&sc->intr_status, PRIBIO, "rtsxintr",
-#if __APPLE__ && RTSX_MIMIC_LINUX
+#if __APPLE__
 			/* Whenever OpenBSD is waiting 1 sec, the Linux driver only waits for 100 ms. Some commands
 			   have to result in a timeout error, which makes card mounting slower than it should be.
 			   Hence, we use 100 ms whenever 1 sec is received as timeout. */
-		    secs == 1 ? 100000000 : SEC_TO_NSEC(secs)) == EWOULDBLOCK) {
+		    Sinetek_rtsx_boot_arg_mimic_linux && secs == 1 ? 100000000 : SEC_TO_NSEC(secs)) == EWOULDBLOCK) {
 #else
 		}
 		    SEC_TO_NSEC(secs)) == EWOULDBLOCK) {

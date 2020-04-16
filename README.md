@@ -13,7 +13,7 @@ It took me a while to understand the code. Some problems I found:
 
 An OpenBSD-compatibility layer has been added to make the original OpenBSD driver work with as few changes as possible. This implied rewriting all OpenBSD functions which are not available in Darwin so that the same behavior is obtained using only functions available in the macOS kernel. The benefit this brings is that the future improvements in the OpenBSD driver can be incorporated more easily.
 
-### Options
+### Compile-Time Options
 
 The code allows some customization by defining/undefining certain preprocessor macros (set on ):
 
@@ -25,7 +25,12 @@ The code allows some customization by defining/undefining certain preprocessor m
 | `RTSX_USE_IOLOCK`        |                   | This should use more locks to protect critical sections.                                                                    |
 | `RTSX_USE_IOCOMMANDGATE` | `RTSX_USE_IOLOCK` | A try to make `IOCommandGate` working, but never really worked.                                                             |
 | `RTSX_USE_IOMALLOC`      |                   | Use `IOMalloc`/`IOFree` for memory management instead of `new`/`delete`.                                                    |
-| `RTSX_MIMIC_LINUX`       |                   | Mimic what Linux does when initializing the hardware (only implemented for RTS525A).                                        |
+
+### Boot Arguments
+
+| Option              | Notes                                                                                                                       |
+|---------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| `-rtsx_mimic_linux` | Do some extra initialization which may be useful if your chip is exactly RTS525A version B (exactly the same as mine).      |
 
 ## To Do
 
