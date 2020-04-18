@@ -107,6 +107,7 @@ int config_detach(struct device *dev, int flags)
 	int ret = 0;
 	UTL_CHK_PTR(dev, EINVAL);
 	UTL_CHK_PTR(dev->dv_cfdata, EINVAL);
+	UTL_CHK_PTR(dev->dv_cfdata->cf_attach, EINVAL);
 
 	struct cfattach *cf_attach = dev->dv_cfdata->cf_attach;
 

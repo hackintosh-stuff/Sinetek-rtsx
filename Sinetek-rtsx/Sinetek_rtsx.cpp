@@ -236,7 +236,6 @@ void Sinetek_rtsx::rtsx_pci_attach()
 		case PCI_PRODUCT_REALTEK_RTS525A:
 			/* syscl - RTS525A */
 			flags = RTSX_F_525A;
-			bar = RTSX_PCI_BAR_525A;
 			break;
 		default:
 			flags = 0;
@@ -376,6 +375,7 @@ void Sinetek_rtsx::task_execute_one_impl_(OSObject *target, IOTimerEventSource *
 	for (task = TAILQ_FIRST(tskq); task != NULL;
 	     task = TAILQ_FIRST(tskq)) {
 		UTL_DEBUG_LOOP("  => Executing one task (CRASHED HERE!)...");
+		// remove task from queue (clang static analyzer gives false "Use of memory after it is freed")
 		sdmmc_del_task(task);
 		UTL_DEBUG_LOOP("  => Task deleted from queue");
 		task->func(task->arg);
