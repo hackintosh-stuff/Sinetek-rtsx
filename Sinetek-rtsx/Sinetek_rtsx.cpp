@@ -69,9 +69,9 @@ bool Sinetek_rtsx::init(OSDictionary *dictionary) {
 	// TODO: Calling config_found
 	strlcpy(rtsx_softc_original_->sc_dev.dv_xname, "rtsx", sizeof(rtsx_softc_original_->sc_dev.dv_xname));
 	uint32_t dummy;
-	write_enabled_ = PE_parse_boot_argn("-rtsx_rw", &dummy, sizeof(dummy));
-	if (write_enabled_) {
-		UTL_LOG("Writing is enabled");
+	write_enabled_ = !PE_parse_boot_argn("-rtsx_ro", &dummy, sizeof(dummy));
+	if (!write_enabled_) {
+		UTL_LOG("Read-only mode");
 	}
 	Sinetek_rtsx_boot_arg_mimic_linux = (int) PE_parse_boot_argn("-rtsx_mimic_linux", &dummy, sizeof(dummy));
 	UTL_DEBUG_FUN("END");

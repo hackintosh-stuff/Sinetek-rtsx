@@ -21,7 +21,7 @@ The code allows some customization by defining/undefining certain preprocessor m
 |--------------------------|-------------------|-----------------------------------------------------------------------------------------------------------------------------|
 | `RTSX_FIX_TASK_BUG`      |                   | Fix task bug (reusing task pointer instead of allocating it).                                                               |
 | `RTSX_USE_WRITEBYTES`    |                   | Use `IOMemoryDescriptor::writeBytes()` method to write buffer instead of the original `buffer->map()->getVirtualAddress()`. |
-| `RTSX_USE_IOFIES`        |                   | Use `IOFilterInterruptEventSource` instead of `IOInterruptEventSource` (should give better performance)                     |
+| `RTSX_USE_IOFIES`        |                   | Use `IOFilterInterruptEventSource` instead of `IOInterruptEventSource` (should give better performance).                    |
 | `RTSX_USE_IOLOCK`        |                   | This should use more locks to protect critical sections.                                                                    |
 | `RTSX_USE_IOCOMMANDGATE` | `RTSX_USE_IOLOCK` | A try to make `IOCommandGate` working, but never really worked.                                                             |
 | `RTSX_USE_IOMALLOC`      |                   | Use `IOMalloc`/`IOFree` for memory management instead of `new`/`delete`.                                                    |
@@ -31,12 +31,12 @@ The code allows some customization by defining/undefining certain preprocessor m
 | Option              | Notes                                                                                                                       |
 |---------------------|-----------------------------------------------------------------------------------------------------------------------------|
 | `-rtsx_mimic_linux` | Do some extra initialization which may be useful if your chip is exactly RTS525A version B (exactly the same as mine).      |
+| `-rtsx_ro`          | Read-only mode (disable writing).                                                                                           |
 
 ## To Do
 
 From higher to lower priority:
 
- - Power management: sleep/wake up is still not implemented. After a wake up the driver will stop working, giving timeout for any command (the interrupt source gets disabled?).
  - Make use of ADMA: This is enabled in OpenBSD, but has been disabled for now because it needs some changes in the compatibility layer (support for dma-maps with more than one segment).
  - Use `.c` extension for OpenBSD compilation units (instead of the current `.cpp`).
  - Fine-tune timeouts? (these may go away once power management is finished).
