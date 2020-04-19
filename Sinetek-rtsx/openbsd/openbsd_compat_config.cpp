@@ -18,18 +18,28 @@ extern struct cfdriver rtsx_cd;
 /// Array of cfdata to be matched
 /// TODO: should be this named cfdata as defined in device.h?
 static struct cfdata my_cfdata[2] = {
-	{ &sdmmc_ca, &sdmmc_cd },
+	{ &sdmmc_ca, &sdmmc_cd }, // index 0 must be sdmmc (see config_activate_chilren())
 	//{ nullptr, &rtsx_cd },
 };
 
-#if 0 // not needed for now...
-// static for now...
-static void *config_search(cfmatch_t fn, struct device *parent, void *aux)
+/// Performs indirect configuration of physical devices by iterating over all potential children, calling the given
+/// function func for each one.
+void *config_search(cfmatch_t fn, struct device *parent, void *aux)
 {
-	void *ret = new sdmmc_softc_original;
-	return ret;
+	for (int i = 0; i < sizeof(my_cfdata) / sizeof(my_cfdata[0]); i++) {
+		UTL_DEBUG_LOOP("Trying my_cfdata[%d]...", i);
+		// cf_attach may be null
+		if (!my_cfdata[i].cf_attach)
+			continue;
+		UTL_DEBUG_LOOP("Calling my_cfdata[%d].ca_match()...", i);
+		if (my_cfdata[i].cf_attach->ca_match(parent, my_cfdata + i, aux)) {
+			// return first match found
+			return &my_cfdata[i];
+		}
+
+	}
+	return nullptr;
 }
-#endif
 
 /**
  * Attach a device (allocate memory for device)
@@ -74,26 +84,21 @@ struct device *config_attach(struct device *parent, void *match, void *aux, cfpr
 struct device *config_found_sm(struct device *parent, void *aux, cfprint_t print, cfmatch_t submatch)
 {
 	UTL_DEBUG_FUN("START");
-	// check all members...
-	for (int i = 0; i < sizeof(my_cfdata) / sizeof(my_cfdata[0]); i++) {
-		UTL_DEBUG_LOOP("Trying my_cfdata[%d]...", i);
-		if (!my_cfdata[i].cf_attach) continue;
 
-		UTL_DEBUG_LOOP("Calling ca_match...");
-		if (my_cfdata[i].cf_attach->ca_match(parent, my_cfdata + i, aux)) {
-			UTL_DEBUG_DEF("Match found. Calling config_attach...");
-			return config_attach(parent, &my_cfdata[i], aux, print);
-		}
+	UTL_CHK_PTR(parent, nullptr);
+
+	if (strncmp(parent->dv_xname, "sdmmc", sizeof(parent->dv_xname)) == 0) {
+		UTL_ERR("sdmmc should not be calling this (io funcion attached?)");
 	}
-	UTL_ERR("Config not found. Returning null.");
-	return nullptr; // not found
-	/* ORIGINAL OPENBSD CODE:
-	void *match = config_search(submatch, parent, aux);
-	if (match)
+	// This is very similar to OpenBSD code:
+	auto match = (struct cfdata *) config_search(submatch, parent, aux);
+	if (match) {
+		UTL_DEBUG_DEF("Match found. Calling config_attach...");
 		return config_attach(parent, match, aux, print);
-	else
+	} else {
+		UTL_ERR("Config not found. Returning null.");
 		return nullptr;
-	*/
+	}
 }
 
 /// Calls deactivate, detach, and frees memory
@@ -129,10 +134,30 @@ int config_detach(struct device *dev, int flags)
 	return ret;
 }
 
-int config_activate_children(struct device *dev, int) {
-	// see subr_autoconf for implementation (not difficult, but do we need it?)
-	UTL_ERR("Function not implemented called by device \"%s\"!", dev->dv_xname);
-	return 0; // nothing to do?
+int config_activate_children(struct device *dev, int act) {
+	// See subr_autoconf for implementation (not difficult, but do not need a complex implementation)
+	// The best would be to implement dv_list, but for now we don't need it
+	// For our case, calling activate() on sdmmc when rtsx_softc calls this method is enough
+	UTL_CHK_PTR(dev, EINVAL);
+
+	if (strcmp(dev->dv_xname, "rtsx") == 0) {
+		auto sdmmc = (struct sdmmc_softc *) ((struct rtsx_softc *)dev)->sdmmc;
+		if (!sdmmc)
+			return ENOTSUP;
+		// activate sdmmc!
+		// TODO: This is hardcoded... change!
+		auto activate = my_cfdata[0].cf_attach->ca_activate;
+		if (activate) {
+			activate(&sdmmc->sc_dev, act);
+		} else {
+			config_activate_children(&sdmmc->sc_dev, act);
+		}
+	} else if (strcmp(dev->dv_xname, "sdmmc") == 0) {
+		// nothing to do
+		return 0;
+	}
+	// otherwise, ignore (nothing to do)
+	return 0;
 }
 
 int config_deactivate(struct device *dev)

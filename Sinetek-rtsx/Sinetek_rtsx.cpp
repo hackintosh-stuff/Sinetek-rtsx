@@ -22,14 +22,16 @@ OSDefineMetaClassAndStructors(Sinetek_rtsx, super);
 #define UTL_THIS_CLASS "Sinetek_rtsx::"
 #include "util.h"
 
+// We need these functions, which are not declared in rtsxvar.h
+int	rtsx_init(struct rtsx_softc *, int);
+void	rtsx_card_eject(struct rtsx_softc *);
+
 //
 // syscl - define & enumerate power states
 //
-enum
-{
-	kPowerStateSleep    = 0,
-	kPowerStateDoze     = 1,
-	kPowerStateNormal   = 2,
+enum {
+	kPowerStateSleep  = 0,
+	kPowerStateNormal = 1,
 	kPowerStateCount
 };
 
@@ -38,9 +40,17 @@ enum
 //
 static IOPMPowerState ourPowerStates[kPowerStateCount] =
 {
-	{ 1,0,0,0,0,0,0,0,0,0,0,0 },
-	{ 1,kIOPMDeviceUsable,kIOPMDoze,kIOPMDoze,0,0,0,0,0,0,0,0 },
-	{ 1,kIOPMDeviceUsable,IOPMPowerOn,IOPMPowerOn,0,0,0,0,0,0,0,0 }
+	// state 0 (sleep)
+	{ kIOPMPowerStateVersion1 },
+	// state 1 (normal)
+	{
+		kIOPMPowerStateVersion1,
+		kIOPMPowerOn               // device is on and requires (and provides) power
+		| kIOPMDeviceUsable        // this is the lowest state at which the device is usable
+		| kIOPMInitialDeviceState, // initially the device is at this state (this should prevent spurious call)
+		kIOPMPowerOn,
+		kIOPMPowerOn
+	}
 };
 
 bool Sinetek_rtsx::init(OSDictionary *dictionary) {
@@ -52,6 +62,9 @@ bool Sinetek_rtsx::init(OSDictionary *dictionary) {
 		UTL_ERR("ERROR ALLOCATING MEMORY!");
 		return false;
 	}
+	// set device name (activate() will need it)
+	// TODO: Calling config_found
+	strlcpy(rtsx_softc_original_->sc_dev.dv_xname, "rtsx", sizeof(rtsx_softc_original_->sc_dev.dv_xname));
 	uint32_t dummy;
 	write_enabled_ = PE_parse_boot_argn("-rtsx_rw", &dummy, sizeof(dummy));
 	if (write_enabled_) {
@@ -273,39 +286,32 @@ void Sinetek_rtsx::rtsx_pci_detach()
 	// TODO: test map_->release();
 }
 
-// TODO: Seems like this is wrong. Power states should match those supported by the OpenBSD driver.
-// TODO: Review this method and power in general.
-// TODO: Be careful because this is called from a different thread, (in parallel with start())
+// This method is called from a different thread. To prevent setPowerState() from being called after we call
+// registerPowerDriver(), we set the kIOPMInitialDeviceState flag in our initial power state.
+// Many services (even logging) may not be available when this method is called.
 IOReturn Sinetek_rtsx::setPowerState(unsigned long powerStateOrdinal, IOService *policyMaker)
 {
-	IOReturn ret = IOPMAckImplied;
 	auto previousState = this->getPowerState();
+	UTL_DEBUG_FUN("START (powerState: %u -> %u)", (unsigned) previousState, (unsigned) powerStateOrdinal);
 
-	UTL_DEBUG_FUN("START");
+	switch (powerStateOrdinal) {
+		case kPowerStateSleep:
+			// save state
+			rtsx_activate(&rtsx_softc_original_->sc_dev, DVACT_SUSPEND);
+			break;
+		case kPowerStateNormal:
+			// re-initialize chip
+			rtsx_init(rtsx_softc_original_, 1);
 
-	if (powerStateOrdinal)
-	{
-		UTL_DEBUG_DEF("Wake from sleep (powerStateOrdinal: %u -> %u)",
-			  (unsigned) previousState,
-			  (unsigned) powerStateOrdinal);
-		// TODO: SEND PROPER ARGUMENT (DVACT_*)
-		//        rtsx_activate(this, 1);
-		goto done;
+			// restore state
+			rtsx_activate(&rtsx_softc_original_->sc_dev, DVACT_RESUME);
+			break;
+		default:
+			UTL_DEBUG_DEF("Ignoring unknown power state (%lu)", powerStateOrdinal);
+			break;
 	}
-	else
-	{
-		UTL_DEBUG_DEF("Sleep the card (powerStateOrdinal: %u -> %u)\n",
-			  (unsigned) previousState,
-			  (unsigned) powerStateOrdinal);
-		// TODO: SEND PROPER ARGUMENT (DVACT_*)
-		//        rtsx_activate(this, 0);
-		goto done;
-	}
-
-done:
 	UTL_DEBUG_FUN("END");
-
-	return ret;
+	return IOPMAckImplied;
 }
 
 void Sinetek_rtsx::prepare_task_loop()
@@ -383,9 +389,6 @@ void Sinetek_rtsx::task_execute_one_impl_(OSObject *target, IOTimerEventSource *
 #endif
 	UTL_DEBUG_DEF("  <=== RELEASING TASK WORKLOOP...");
 }
-
-// forward declare
-extern void rtsx_card_eject(struct rtsx_softc *);
 
 void Sinetek_rtsx::cardEject()
 {
