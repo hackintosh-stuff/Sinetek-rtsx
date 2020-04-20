@@ -4,6 +4,8 @@
 #include <sys/types.h> // struct proc
 #include <kern/thread.h> // kernel_thread_start
 
+#include <AvailabilityMacros.h> // MAC_OS_X_VERSION_MIN_REQUIRED
+
 #define UTL_THIS_CLASS ""
 #include "util.h"
 
@@ -46,8 +48,10 @@ kthread_create(void (*func)(void *), void *arg, struct proc **newpp, const char 
 	if (ret) {
 		UTL_ERR("Error %d creating thread!", ret);
 	}
-	// set thread name
+#if defined(MAC_OS_X_VERSION_10_15) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_15
+	// set thread name (only Catalina and higher)
 	thread_set_thread_name(myArg->thread, name);
+#endif
 	if (newpp)
 		*newpp = (proc *) myArg->thread;
 	return 0;
