@@ -144,12 +144,14 @@ do { \
 #if DEBUG
 #define UTL_SAFE_RELEASE_NULL(ptr) \
 do { \
-	if (!(ptr)) \
+	if (ptr) { \
+		/* if ((ptr)->getRetainCount() != 1) \
+			UTL_ERR("%s: Wrong retain count (%d)", #ptr, (ptr)->getRetainCount()); */ \
+		(ptr)->release(); \
+		(ptr) = nullptr; \
+	} else { \
 		UTL_ERR("%s: Tried to release null pointer!", #ptr); \
-	/* if ((ptr)->getRetainCount() != 1) \
-		UTL_ERR("%s: Wrong retain count (%d)", #ptr, (ptr)->getRetainCount()); */ \
-	(ptr)->release(); \
-	(ptr) = nullptr; \
+	} \
 } while (0)
 #else
 #define UTL_SAFE_RELEASE_NULL(ptr) OSSafeReleaseNULL(ptr)
