@@ -26,11 +26,11 @@ typedef unsigned spl_t;
 })
 
 // to be called only by openbsd_compat_tsleep.cpp
-void *Sinetek_rtsx_openbsd_compat_spl_getGlobalLock();
+void *Sinetek_rtsx_openbsd_compat_spl_getGlobalLock(void);
 
-spl_t Sinetek_rtsx_openbsd_compat_splbio();
+spl_t Sinetek_rtsx_openbsd_compat_splbio(void);
 
-spl_t Sinetek_rtsx_openbsd_compat_splhigh();
+spl_t Sinetek_rtsx_openbsd_compat_splhigh(void);
 
 void Sinetek_rtsx_openbsd_compat_splx(spl_t val);
 

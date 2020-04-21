@@ -40,12 +40,12 @@ bool SDDisk::init(struct sdmmc_softc *sc_sdmmc, OSDictionary* properties)
 	return true;
 }
 
-// TODO: Is this even called?
 void SDDisk::free()
 {
 	UTL_DEBUG_FUN("START");
 	sdmmc_softc_ = NULL;
 	super::free();
+	UTL_LOG("SDDisk freed.");
 }
 
 bool SDDisk::attach(IOService* provider)
@@ -84,11 +84,10 @@ void SDDisk::detach(IOService* provider)
 	UTL_LOG("SDDisk detaching...");
 	IOLockFree(util_lock_);
 	util_lock_ = NULL;
-	provider_->release();
-	provider_ = NULL;
+	UTL_SAFE_RELEASE_NULL(provider_);
 
 	super::detach(provider);
-	UTL_LOG("SDDisk detached.");
+	UTL_LOG("SDDisk detached (retainCount=%d).", this->getRetainCount());
 }
 
 IOReturn SDDisk::doEjectMedia(void)

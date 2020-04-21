@@ -151,14 +151,8 @@ void Sinetek_rtsx::stop(IOService *provider)
 	rtsx_pci_detach();
 	openbsd_compat_stop();
 	destroy_task_loop();
-	if (workloop_) {
-		workloop_->release();
-		workloop_ = nullptr;
-	} else {
-		UTL_ERR("workloop_ is null");
-	}
+	UTL_SAFE_RELEASE_NULL(workloop_);
 	PMstop();
-
 
 	IOSleep(1000); // give the worker thread some time to finish TODO: Fix this!
 
@@ -177,6 +171,7 @@ static void trampoline_intr(OSObject *ih, IOInterruptEventSource *ies, int count
 		UTL_ERR("Object received is not a Sinetek_rtsx!");
 }
 
+// This method is called only from start()
 void Sinetek_rtsx::rtsx_pci_attach()
 {
 	uint device_id;
@@ -275,8 +270,7 @@ void Sinetek_rtsx::rtsx_pci_detach()
 	UTL_CHK_PTR(intr_source_,);
 
 	workloop_->removeEventSource(intr_source_);
-	intr_source_->release();
-	intr_source_ = nullptr;
+	UTL_SAFE_RELEASE_NULL(intr_source_);
 #if RTSX_USE_IOLOCK
 	// should this be called in free()?
 	UTL_CHK_PTR(splsdmmc_rec_lock,);
@@ -343,19 +337,15 @@ void Sinetek_rtsx::destroy_task_loop()
 	UTL_CHK_PTR(workloop_,)
 	workloop_->removeEventSource(task_command_gate_);
 	UTL_CHK_PTR(task_command_gate_,);
-	task_command_gate_->release();
-	task_command_gate_ = nullptr;
+	UTL_SAFE_RELEASE_NULL(task_command_gate_);
 	UTL_CHK_PTR(workloop_,);
 	workloop_->removeEventSource(task_execute_one_);
-	task_execute_one_->release();
-	task_execute_one_ = nullptr;
+	UTL_SAFE_RELEASE_NULL(task_execute_one_);
 #else
 	UTL_CHK_PTR(task_loop_,);
 	task_loop_->removeEventSource(task_execute_one_);
-	task_execute_one_->release();
-	task_execute_one_ = nullptr;
-	task_loop_->release();
-	task_loop_ = nullptr;
+	UTL_SAFE_RELEASE_NULL(task_execute_one_);
+	UTL_SAFE_RELEASE_NULL(task_loop_);
 #endif
 }
 
@@ -412,8 +402,7 @@ void Sinetek_rtsx::blk_attach()
 	sddisk_ = OSTypeAlloc(SDDisk); // equivalent to new SDDisk();
 	UTL_CHK_PTR(sddisk_,);
 	if (!sddisk_->init((struct sdmmc_softc *) rtsx_softc_original_->sdmmc)) { // TODO: Fix this!
-		sddisk_->release();
-		sddisk_ = NULL;
+		UTL_SAFE_RELEASE_NULL(sddisk_);
 		return;
 	};
 	sddisk_->attach(this);
