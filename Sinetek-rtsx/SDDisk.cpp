@@ -32,7 +32,6 @@ bool SDDisk::init(struct sdmmc_softc *sc_sdmmc, OSDictionary* properties)
 	if (super::init(properties) == false)
 		return false;
 
-	util_lock_ = NULL;
 	card_is_write_protected_ = true;
 	sdmmc_softc_ = sc_sdmmc;
 
@@ -67,7 +66,6 @@ bool SDDisk::attach(IOService* provider)
 	UTL_CHK_PTR(sdmmc_softc_->sc_fn0, false);
 	num_blocks_ = sdmmc_softc_->sc_fn0->csd.capacity;
 	blk_size_   = sdmmc_softc_->sc_fn0->csd.sector_size;
-	util_lock_ = IOLockAlloc();
 
 	printf("rtsx: attaching SDDisk, num_blocks:%d  blk_size:%d\n",
 	       num_blocks_, blk_size_);
@@ -82,8 +80,6 @@ bool SDDisk::attach(IOService* provider)
 void SDDisk::detach(IOService* provider)
 {
 	UTL_LOG("SDDisk detaching...");
-	IOLockFree(util_lock_);
-	util_lock_ = NULL;
 	UTL_SAFE_RELEASE_NULL(provider_);
 
 	super::detach(provider);
@@ -389,7 +385,6 @@ IOReturn SDDisk::doAsyncReadWrite(IOMemoryDescriptor *buffer,
 
 	// printf("=====================================================\n");
 	UTL_DEBUG_DEF("START (block=%d nblks=%d)", (int) block, (int) nblks);
-	IOLockLock(util_lock_);
 
 	/*
 	 * Copy things over as we're going to lose the parameters once this
@@ -417,7 +412,6 @@ IOReturn SDDisk::doAsyncReadWrite(IOMemoryDescriptor *buffer,
 	sdmmc_add_task(sdmmc_softc_, &provider_->read_task_);
 #endif
 
-	IOLockUnlock(util_lock_);
 	// printf("=====================================================\n");
 
 	UTL_DEBUG_DEF("RETURNING SUCCESS");
