@@ -280,7 +280,7 @@ void Sinetek_rtsx::rtsx_pci_detach()
 	IOLockFree(this->intr_status_lock);
 	this->intr_status_lock = nullptr;
 #endif // RTSX_USE_IOLOCK
-	// TODO: test map_->release();
+	UTL_SAFE_RELEASE_NULL(map_);
 }
 
 // This method is called from a different thread. To prevent setPowerState() from being called after we call
