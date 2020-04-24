@@ -301,8 +301,9 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 	int error;
 
 	/* Read IC version from dummy register. */
+	RTSX_READ(sc, RTSX_DUMMY_REG, &version);
+
 	if (sc->flags & RTSX_F_5229) {
-		RTSX_READ(sc, RTSX_DUMMY_REG, &version);
 		switch (version & 0x0F) {
 		case RTSX_IC_VERSION_A:
 		case RTSX_IC_VERSION_B:
@@ -322,7 +323,6 @@ rtsx_init(struct rtsx_softc *sc, int attaching)
 	}
 #if __APPLE__
 	else if (sc->flags & RTSX_F_525A) {
-		RTSX_READ(sc, RTSX_DUMMY_REG, &version);
 		version &= 0x0f;
 		if (version < 4) {
 			UTL_DEBUG_DEF("Chip version %c found", 'A' + version);
