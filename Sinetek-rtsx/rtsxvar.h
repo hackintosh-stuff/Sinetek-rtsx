@@ -63,6 +63,8 @@ int	rtsx_intr(void *);
 #define	RTSX_F_525A_TYPE_A	0x40
 #define RTSX_F_REVERSE_SOCKET	0x80
 #define RTSX_F_FORCE_CLKREQ_0	0x100
+#define RTSX_F_5227		0x200
+#define RTSX_F_522A		0x400
 #endif
 
 #endif
