@@ -8,6 +8,9 @@
 #include <IOKit/IOMemoryDescriptor.h> // IOMemoryDescriptor
 #endif
 
+#pragma mark -
+#pragma mark Logging macros
+
 #ifndef UTL_THIS_CLASS
 #error UTL_THIS_CLASS must be defined before including this file (i.e.: #define UTL_THIS_CLASS "SDDisk::").
 #endif
@@ -28,6 +31,13 @@
 	if (UTL_LOG_DELAY_MS) IOSleep(UTL_LOG_DELAY_MS); /* Wait for log to appear... */ \
 } while (0)
 
+#define UTL_CHK_PTR(ptr, ret) do { \
+	if (!(ptr)) { \
+		UTL_ERR("null pointer (%s) found!!!", #ptr); \
+		return ret; \
+	} \
+} while (0)
+
 #define UTL_CHK_SUCCESS(expr) \
 ({ \
 	int sinetek_rtsx_utl_chk_success = expr; \
@@ -36,6 +46,9 @@
 	} \
 	sinetek_rtsx_utl_chk_success; \
 })
+
+#pragma mark -
+#pragma mark Debugging macros/functions
 
 #if DEBUG
 #ifndef UTL_DEBUG_LEVEL
@@ -110,12 +123,8 @@ static inline const char *busSpaceReg2str(IOByteCount offset) {
 }
 #endif // DEBUG
 
-#define UTL_CHK_PTR(ptr, ret) do { \
-	if (!(ptr)) { \
-		UTL_ERR("null pointer (%s) found!!!", #ptr); \
-		return ret; \
-	} \
-} while (0)
+#pragma mark -
+#pragma mark Memory functions
 
 #if RTSX_USE_IOMALLOC
 #define UTL_MALLOC(TYPE) (TYPE *) UTLMalloc(#TYPE, sizeof(TYPE))
@@ -157,20 +166,6 @@ do { \
 #define UTL_SAFE_RELEASE_NULL(ptr) OSSafeReleaseNULL(ptr)
 #endif
 
-static inline AbsoluteTime nsecs2AbsoluteTimeDeadline(uint64_t nsecs) {
-	AbsoluteTime absInterval, deadline;
-	nanoseconds_to_absolutetime(nsecs, &absInterval);
-	clock_absolutetime_interval_to_deadline(absInterval, &deadline);
-	return deadline;
-}
-
-static inline AbsoluteTime timo2AbsoluteTimeDeadline(int timo) {
-	extern int hz;
-	uint64_t nsDelay = (uint64_t) timo / hz * 1000000000LL;
-	AbsoluteTime deadline = nsecs2AbsoluteTimeDeadline(nsDelay);
-	return deadline;
-}
-
 #if __cplusplus
 
 /// Only valid between prepare() and complete()
@@ -208,7 +203,30 @@ static inline void dumpBuffer(IOMemoryDescriptor *md) {
 
 #endif // __cplusplus
 
+#pragma mark -
+#pragma mark Time functions
+
+static inline AbsoluteTime nsecs2AbsoluteTimeDeadline(uint64_t nsecs) {
+	AbsoluteTime absInterval, deadline;
+	nanoseconds_to_absolutetime(nsecs, &absInterval);
+	clock_absolutetime_interval_to_deadline(absInterval, &deadline);
+	return deadline;
+}
+
+static inline AbsoluteTime timo2AbsoluteTimeDeadline(int timo) {
+	extern int hz;
+	uint64_t nsDelay = (uint64_t) timo / hz * 1000000000LL;
+	AbsoluteTime deadline = nsecs2AbsoluteTimeDeadline(nsDelay);
+	return deadline;
+}
+
+#pragma mark -
+#pragma mark Other utility macros
+
 #define RTSX_PTR_FMT "0x%08x%08x"
 #define RTSX_PTR_FMT_VAR(ptr) (uint32_t) ((uintptr_t) ptr >> 32), (uint32_t) (uintptr_t) ptr
+
+#define xUTL_STRINGIZE(str) #str
+#define UTL_STRINGIZE(str) xUTL_STRINGIZE(str)
 
 #endif /* SINETEK_RTSX_UTIL_H */

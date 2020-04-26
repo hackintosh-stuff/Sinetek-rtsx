@@ -127,7 +127,7 @@ bool Sinetek_rtsx::start(IOService *provider)
 	}
 	UTL_DEBUG_DEF("Power management initialized");
 
-	UTL_LOG("Driver started (%s version)",
+	UTL_LOG("Driver started (version %s %s build)", UTL_STRINGIZE(MODULE_VERSION),
 #if DEBUG
 		"debug");
 #else
