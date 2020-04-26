@@ -331,7 +331,13 @@ void read_task_impl_(void *_args)
 			(args->completion.action)(args->completion.target, args->completion.parameter,
 						  kIOReturnSuccess, actualByteCount);
 		} else {
-			UTL_ERR("Returning an IO Error! (error = %d)", error);
+			UTL_ERR("Returning an IO Error!"
+				" (%s block = %u nblks = %u blksize = %u physSectSize = %u error = %d)",
+				args->direction == kIODirectionIn ? "READ" : "WRITE",
+				static_cast<unsigned>(args->block),
+				static_cast<unsigned>(args->nblks),
+				args->that->blk_size_,
+				sdmmc->sc_fn0->csd.sector_size, error);
 			(args->completion.action)(args->completion.target, args->completion.parameter,
 						  kIOReturnIOError, 0);
 		}
