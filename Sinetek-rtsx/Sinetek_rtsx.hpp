@@ -35,6 +35,8 @@ public:
 	virtual bool start(IOService * provider) override;
 	virtual void stop(IOService * provider) override;
 
+	static void trampoline_intr(OSObject *ih, IOInterruptEventSource *ies, int count);
+
 	void rtsx_pci_attach();
 	void rtsx_pci_detach();
 	/* syscl - Power Management Support */
@@ -44,6 +46,7 @@ public:
 	void blk_detach();
 
 #if RTSX_USE_IOFIES
+	uint32_t READ4(IOByteCount offset);
 	static bool is_my_interrupt(OSObject *arg, IOFilterInterruptEventSource *source);
 #endif // RTSX_USE_IOFIES
 

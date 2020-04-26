@@ -160,7 +160,7 @@ void Sinetek_rtsx::stop(IOService *provider)
 	UTL_LOG("Driver stopped.");
 }
 
-static void trampoline_intr(OSObject *ih, IOInterruptEventSource *ies, int count)
+void Sinetek_rtsx::trampoline_intr(OSObject *ih, IOInterruptEventSource *ies, int count)
 {
 	UTL_DEBUG_INT("Interrupt received (ies=" RTSX_PTR_FMT " count=%d)!", RTSX_PTR_FMT_VAR(ies), count);
 	/* go to isr handler */
@@ -423,27 +423,29 @@ void Sinetek_rtsx::blk_detach()
 }
 
 #if RTSX_USE_IOFIES
-static uint32_t READ4(Sinetek_rtsx *sc, IOByteCount offset) {
+uint32_t Sinetek_rtsx::READ4(IOByteCount offset)
+{
 	uint32_t ret = 0;
-	sc->memory_descriptor_->readBytes(offset, &ret, 4);
+	this->memory_descriptor_->readBytes(offset, &ret, 4);
 	// we cannot log here
 	return ret;
 }
 
 /// This function runs in interrupt context, meaning that IOLog CANNOT be used (only basic functionality is available).
-bool Sinetek_rtsx::is_my_interrupt(OSObject *arg, IOFilterInterruptEventSource *source) {
+bool Sinetek_rtsx::is_my_interrupt(OSObject *arg, IOFilterInterruptEventSource *source)
+{
 	// Can't use UTL_CHK_PTR here because we can't log
 	if (!arg) return false;
 
 	Sinetek_rtsx *sc = OSDynamicCast(Sinetek_rtsx, arg);
 	if (!sc) return false;
 
-	auto status = READ4(sc, RTSX_BIPR);
+	auto status = sc->READ4(RTSX_BIPR);
 	if (!status) {
 		return false;
 	}
 
-	auto bier = READ4(sc, RTSX_BIER);
+	auto bier = sc->READ4(RTSX_BIER);
 	if ((status & bier) == 0) return false;
 
 	return true;
