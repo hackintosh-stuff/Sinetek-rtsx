@@ -299,7 +299,7 @@ void read_task_impl_(void *_args)
 			if (error)
 				break;
 #if RTSX_USE_WRITEBYTES
-			IOByteCount copied_bytes = args->buffer->writeBytes(sentBytes, buf, sendByteCount);
+			IOByteCount copied_bytes = args->buffer->writeBytes(sentBytes, buf + sentBytes, sendByteCount);
 			if (copied_bytes == 0) {
 				error = EIO;
 				break;
@@ -307,7 +307,7 @@ void read_task_impl_(void *_args)
 #endif
 		} else {
 #if RTSX_USE_WRITEBYTES
-			IOByteCount copied_bytes = args->buffer->readBytes(sentBytes, buf, sendByteCount);
+			IOByteCount copied_bytes = args->buffer->readBytes(sentBytes, buf + sentBytes, sendByteCount);
 			if (copied_bytes == 0) {
 				error = EIO;
 				break;
