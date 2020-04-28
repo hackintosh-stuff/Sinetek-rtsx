@@ -224,6 +224,12 @@ void Sinetek_rtsx::rtsx_pci_attach()
 		case PCI_PRODUCT_REALTEK_RTS5209:
 			flags = RTSX_F_5209;
 			break;
+		case PCI_PRODUCT_REALTEK_RTS5227:
+			flags = RTSX_F_5227;
+			break;
+		case PCI_PRODUCT_REALTEK_RTS522A:
+			flags = RTSX_F_522A;
+			break;
 		case PCI_PRODUCT_REALTEK_RTS5229:
 		case PCI_PRODUCT_REALTEK_RTS5249:
 			flags = RTSX_F_5229;
