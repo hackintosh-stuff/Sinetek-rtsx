@@ -1,0 +1,29 @@
+#!/bin/bash
+
+KEXT="Sinetek-rtsx.kext"
+BUNDLE_ID="com.sinet3k.Sinetek-rtsx"
+CLASS_NAME="Sinetek_rtsx"
+
+# sync filesystem before loading the kext (hopefully this will help prevent
+# filesystem corruption in case the kext crashes...).
+sync
+
+if [ $# -eq 1 -a "$1" = "-b" ]; then
+	sudo kextunload -b "$BUNDLE_ID"
+elif [ $# -eq 1 -a "$1" = "-c" ]; then
+	sudo kextunload -c "$CLASS_NAME" -v 1
+else
+	if sudo kextunload "$KEXT" >/dev/null 2>&1; then
+		echo "Kext unloaded"
+		exit 0
+	fi
+	echo "Unloading class first..."
+	sudo kextunload -c "$CLASS_NAME" >/dev/null 2>&1
+	if sudo kextunload "$KEXT" >/dev/null 2>&1; then
+		echo "Kext unloaded"
+		exit 0
+	else
+		echo "Failed"
+		exit 2
+	fi
+fi

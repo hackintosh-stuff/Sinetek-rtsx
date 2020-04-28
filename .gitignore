@@ -27,3 +27,14 @@
 *.exe
 *.out
 *.app
+
+# Xcode-related files
+*.xcuserstate
+*.xcodeproj/project.xcworkspace
+*.xcodeproj/xcuserdata
+build
+.vscode
+
+# Ignore kext itself
+Sinetek-rtsx.kext/
+DerivedData/

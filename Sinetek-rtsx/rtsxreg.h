@@ -476,7 +476,11 @@
 #define	RTSX_PHY_VOLTAGE	0x08
 #define	RTSX_PHY_VOLTAGE_MASK	0x3F
 
+#if __APPLE__
+#define	RTSX_PETXCFG		0xFF03 /* 0xFE49 changed in 2015, see https://github.com/torvalds/linux/commit/9e33ce79f828eb5a1bb9dd4830c7fa719d4279dc */
+#else
 #define	RTSX_PETXCFG		0xFE49
+#endif
 #define	RTSX_PETXCFG_CLKREQ_PIN	0x08
 
 #define	RTSX_CARD_AUTO_BLINK	0xFD56
